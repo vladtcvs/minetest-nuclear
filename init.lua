@@ -1,5 +1,9 @@
 nuclear={}
 
+nuclear.uranium_melting = 1405.5
+nuclear.uranium_hot = 900
+nuclear.air_temperature = 300
+
 minetest.register_node("nuclear:radioactive_water_source", {
 	description = "Radioactive Water Source",
 	drawtype = "liquid",
@@ -132,10 +136,15 @@ minetest.register_node("nuclear:melted_uranium_source", {
 	liquidtype = "source",
 	liquid_alternative_flowing = "nuclear:melted_uranium_flowing",
 	liquid_alternative_source = "nuclear:melted_uranium_source",
-	liquid_viscosity = 7,
+	liquid_viscosity = 14,
 	post_effect_color = {a = 103, r = 30, g = 60, b = 90},
 	groups = {fissionable = 1, liquid = 2, hot = 3, igniter = 1, falling_node = 1},
 	damage_per_second = 16*2,
+	on_construct = function(pos)
+		local meta = minetest.get_meta(pos)
+		meta:set_float("temperature", nuclear.uranium_melting + 1)
+		meta:set_float("decay_intensity", 0)
+	end,
 })
 
 minetest.register_node("nuclear:melted_uranium_flowing", {
@@ -176,7 +185,7 @@ minetest.register_node("nuclear:melted_uranium_flowing", {
 	drop = "",
 	drowning = 1,
 	liquidtype = "flowing",
-	liquid_viscosity = 7,
+	liquid_viscosity = 14,
 	liquid_alternative_flowing = "nuclear:melted_uranium_flowing",
 	liquid_alternative_source = "nuclear:melted_uranium_source",
 	post_effect_color = {a = 103, r = 30, g = 60, b = 90},
@@ -205,6 +214,11 @@ minetest.register_node("nuclear:enriched_uranium", {
 	groups = {cracky = 3, fissionable = 1},
 	is_ground_content = false,
 	sounds = default.node_sound_stone_defaults(),
+	on_construct = function(pos)
+		local meta = minetest.get_meta(pos)
+		meta:set_float("temperature", nuclear.air_temperature)
+		meta:set_float("decay_intensity", 0)
+	end,
 })
 
 minetest.register_node("nuclear:enriched_uranium_overheat", {
@@ -214,6 +228,76 @@ minetest.register_node("nuclear:enriched_uranium_overheat", {
 	light_source = default.LIGHT_MAX,
 	is_ground_content = false,
 	sounds = default.node_sound_stone_defaults(),
+	on_construct = function(pos)
+		local meta = minetest.get_meta(pos)
+		meta:set_float("temperature", nuclear.uranium_hot + 1)
+		meta:set_float("decay_intensity", 0)
+	end,
+})
+
+minetest.register_abm({
+	nodenames = {"nuclear:melted_uranium_source"},
+	interval = 10,
+	chance = 1,
+	action = function(pos)
+		local meta = minetest.get_meta(pos)
+		local temperature = meta:get_float("temperature")
+		if (temperature < nuclear.uranium_melting) then
+			local decay = meta:get_float("decay_intensity")
+			minetest.add_node(pos, {name="nuclear:enriched_uranium_overheat"})
+			local freezemeta = minetest.get_meta(pos)
+			freezemeta:set_float("temperature", temperature)
+			freezemeta:set_float("decay_intensity", decay)
+			print("Melted uranium is freezed! T = "..temperature)
+			nodeupdate(pos)
+		end
+	end,
+})
+
+minetest.register_abm({
+	nodenames = {"nuclear:enriched_uranium_overheat"},
+	interval = 10,
+	chance = 1,
+	action = function(pos)
+		local meta = minetest.get_meta(pos)
+		local temperature = meta:get_float("temperature")
+		if (temperature >= nuclear.uranium_melting) then
+			local decay = meta:get_float("decay_intensity")
+			minetest.add_node(pos, {name="nuclear:melted_uranium_source"})
+			local meltedmeta = minetest.get_meta(pos)
+			meltedmeta:set_float("temperature", temperature)
+			meltedmeta:set_float("decay_intensity", decay)
+			print("Uranium melts! T = "..temperature)
+			nodeupdate(pos)
+		elseif (temperature < nuclear.uranium_hot) then
+			local decay = meta:get_float("decay_intensity")
+			minetest.add_node(pos, {name="nuclear:enriched_uranium"})
+			local coolmeta = minetest.get_meta(pos)
+			coolmeta:set_float("temperature", temperature)
+			coolmeta:set_float("decay_intensity", decay)
+			print("Uranium is cooled! T = "..temperature)
+			nodeupdate(pos)
+		end
+	end,
+})
+
+minetest.register_abm({
+	nodenames = {"nuclear:enriched_uranium"},
+	interval = 10,
+	chance = 1,
+	action = function(pos)
+		local meta = minetest.get_meta(pos)
+		local temperature = meta:get_float("temperature")
+		if (temperature >= nuclear.uranium_hot) then
+			local decay = meta:get_float("decay_intensity")
+			minetest.add_node(pos, {name="nuclear:enriched_uranium_overheat"})
+			local hotmeta = minetest.get_meta(pos)
+			hotmeta:set_float("temperature", temperature)
+			hotmeta:set_float("decay_intensity", decay)
+			print("Uranium became hot! T = "..temperature)
+			nodeupdate(pos)
+		end
+	end,
 })
 
 minetest.register_node("nuclear:stone_with_uranium", {
