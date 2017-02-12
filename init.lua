@@ -145,6 +145,7 @@ minetest.register_node("nuclear:melted_uranium_source", {
 	liquid_alternative_flowing = "nuclear:melted_uranium_flowing",
 	liquid_alternative_source = "nuclear:melted_uranium_source",
 	liquid_viscosity = 14,
+	liquid_renewable = false,
 	post_effect_color = {a = 103, r = 30, g = 60, b = 90},
 	groups = {fissionable = 1, liquid = 2, hot = 3, igniter = 1, falling_node = 1},
 	damage_per_second = 16*2,
@@ -194,6 +195,7 @@ minetest.register_node("nuclear:melted_uranium_flowing", {
 	drowning = 1,
 	liquidtype = "flowing",
 	liquid_viscosity = 14,
+	liquid_renewable = false,
 	liquid_alternative_flowing = "nuclear:melted_uranium_flowing",
 	liquid_alternative_source = "nuclear:melted_uranium_source",
 	post_effect_color = {a = 103, r = 30, g = 60, b = 90},
@@ -260,7 +262,6 @@ vector.scalar = function(vec1, vec2)
 end
 
 nuclear.get_meta = function(pos)
-	
 	local meta = minetest.get_meta(pos)
 	local data = {
 		temperature = meta:get_float("temperature"),
@@ -285,7 +286,7 @@ nuclear.has_intersection = function(center, position, blocks)
 		if (vl < dl) then
 			local s = vector.scalar(t, vec)
 			local h = vector.subtract(vec, vector.multiply(t, s))
-			if vector.length(h) < 1/1.41 then
+			if vector.length(h) < 0.5 then
 				return true
 			end
 		end
