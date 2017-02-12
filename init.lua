@@ -3,6 +3,7 @@ nuclear={}
 nuclear.uranium_melting = 1405.5
 nuclear.uranium_hot = 900
 nuclear.air_temperature = 300
+nuclear.dist = {x = 5, y = 5, z = 5}
 
 minetest.register_node("nuclear:radioactive_water_source", {
 	description = "Radioactive Water Source",
@@ -224,7 +225,7 @@ minetest.register_node("nuclear:enriched_uranium", {
 minetest.register_node("nuclear:enriched_uranium_overheat", {
 	description = "Overheated enriched uranium",
 	tiles = {"nuclear_enriched_uranium_overheat.png"},
-	groups = {cracky = 3, hot = 3},
+	groups = {cracky = 3, hot = 3, fissionable = 1},
 	light_source = default.LIGHT_MAX,
 	is_ground_content = false,
 	sounds = default.node_sound_stone_defaults(),
@@ -234,6 +235,55 @@ minetest.register_node("nuclear:enriched_uranium_overheat", {
 		meta:set_float("decay_intensity", 0)
 	end,
 })
+
+vector.scalar = function(vec1, vec2)
+	return vec1.x * vec2.x + vec1.y * vec2.y + vec1.z * vec2.z
+end
+
+nuclear.has_intersection = function(center, position, blocks)
+	local diff = vector.subtract(position, center)
+	local dl = vector.length(diff)
+	local t = vector.multiply(diff, 1/dl)
+	for i,block in pairs(blocks) do
+		local vec = vector.subtract(block, center)
+		local vl = vector.length(vec)
+		if (vl < dl) then
+			local s = vector.scalar(t, vec)
+			local h = vector.subtract(vec, vector.multiply(t, s))
+			if vector.length(h) < 1/1.41 then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+minetest.register_abm({
+	nodenames = {"nuclear:melted_uranium_source",
+	             "nuclear:enriched_uranium_overheat",
+	             "nuclear:enriched_uranium"},
+	interval = 10,
+	chance = 1,
+	action = function(pos)
+		print("Position ["..pos.x..","..pos.y..","..pos.z.."]")
+		local minp = vector.subtract(pos, nuclear.dist);
+		local maxp = vector.add(pos, nuclear.dist);
+		local neigbours = minetest.find_nodes_in_area(minp, maxp, "group:fissionable")
+		local graphite = minetest.find_nodes_in_area(minp, maxp, "nuclear:graphite")
+		local meta = minetest.get_meta(pos)
+		local temp = meta:get_float("temperature")
+		for i,npos in pairs(neigbours) do
+			if ((not vector.equals(pos, npos)) and nuclear.has_intersection(pos, npos, graphite)) then
+				local diff = vector.subtract(npos, pos)
+				local dist = vector.length(diff)
+				temp = temp + 50 / dist;
+			end
+		end
+		meta:set_float("temperature", temp)
+		print("T: "..meta:get_float("temperature"))
+	end,
+})
+
 
 minetest.register_abm({
 	nodenames = {"nuclear:melted_uranium_source"},
