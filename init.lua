@@ -12,6 +12,7 @@ nuclear.bottommelt = 0.4
 nuclear.sidemelt = 0.2
 nuclear.obsidian_mk = 10
 
+--[[
 minetest.register_node("nuclear:radioactive_water_source", {
 	description = "Radioactive Water Source",
 	drawtype = "liquid",
@@ -104,6 +105,7 @@ minetest.register_node("nuclear:radioactive_water_flowing", {
 		not_in_creative_inventory = 1},
 	damage_per_second = 1,
 })
+]]--
 
 minetest.register_node("nuclear:melted_uranium_source", {
 	description = "Melted Uranium Source",
@@ -147,7 +149,7 @@ minetest.register_node("nuclear:melted_uranium_source", {
 	liquid_viscosity = 7,
 	liquid_renewable = false,
 	post_effect_color = {a = 103, r = 30, g = 60, b = 90},
-	groups = {fissionable = 1, liquid = 2, hot = 3, igniter = 1, falling_node = 1},
+	groups = {fissionable = 1, liquid = 2, hot = 3, igniter = 1, falling_node = 1, radioactive = 1},
 	damage_per_second = 16*2,
 	on_construct = function(pos)
 		local meta = minetest.get_meta(pos)
@@ -199,7 +201,7 @@ minetest.register_node("nuclear:melted_uranium_flowing", {
 	liquid_alternative_flowing = "nuclear:melted_uranium_flowing",
 	liquid_alternative_source = "nuclear:melted_uranium_source",
 	post_effect_color = {a = 103, r = 30, g = 60, b = 90},
-	groups = {fissionable = 1, liquid = 2, hot = 3, igniter = 1, not_in_creative_inventory = 1},
+	groups = {fissionable = 1, liquid = 2, hot = 3, igniter = 1, not_in_creative_inventory = 1, radioactive = 1},
 	damage_per_second = 16*2,
 })
 
@@ -221,7 +223,7 @@ minetest.register_node("nuclear:uraniumblock", {
 minetest.register_node("nuclear:uranium_waste", {
 	description = "Uranium waste",
 	tiles = {"nuclear_waste.png"},
-	groups = {cracky = 3},
+	groups = {cracky = 3, radioactive = 1},
 	is_ground_content = false,
 	sounds = default.node_sound_stone_defaults(),
 	on_construct = function(pos)
@@ -233,7 +235,7 @@ minetest.register_node("nuclear:uranium_waste", {
 minetest.register_node("nuclear:enriched_uranium", {
 	description = "Enriched uranium",
 	tiles = {"nuclear_enriched_uranium.png"},
-	groups = {cracky = 3, fissionable = 1},
+	groups = {cracky = 3, fissionable = 1, radioactive = 1},
 	is_ground_content = false,
 	sounds = default.node_sound_stone_defaults(),
 	on_construct = function(pos)
@@ -246,7 +248,7 @@ minetest.register_node("nuclear:enriched_uranium", {
 minetest.register_node("nuclear:enriched_uranium_overheat", {
 	description = "Overheated enriched uranium",
 	tiles = {"nuclear_enriched_uranium_overheat.png"},
-	groups = {cracky = 3, hot = 3, fissionable = 1},
+	groups = {cracky = 3, hot = 3, fissionable = 1, radioactive = 1},
 	light_source = default.LIGHT_MAX,
 	is_ground_content = false,
 	sounds = default.node_sound_stone_defaults(),
@@ -350,26 +352,36 @@ minetest.register_abm({
 })
 
 minetest.register_abm({
-	nodenames = {"nuclear:melted_uranium_flowing",
-	             "nuclear:melted_uranium_source",
-	             "nuclear:enriched_uranium_overheat",
-	             "nuclear:enriched_uranium",
-	             "nuclear:uranium_waste"},
+	nodenames = {"group:radioactive"},
 	interval = 10,
 	chance = 1,
 	action = function(pos)
+		local data = nuclear.get_meta(pos)
+		if (data.waste == 0) then
+			return
+		end
 		local minp = vector.subtract(pos, nuclear.dist);
 		local maxp = vector.add(pos, nuclear.dist);
 		local water = minetest.find_nodes_in_area(minp, maxp, "group:water")
 		for i,wp in pairs(water) do
-			local node = minetest.get_node(wp)
+			--[[local node = minetest.get_node(wp)
 			local type = minetest.registered_nodes[node.name].liquidtype;
-			if (type == "source") then
-				minetest.add_node(wp, {name="nuclear:radioactive_water_source"})
-			elseif (type == "flowing") then
-				minetest.add_node(wp, {name="nuclear:radioactive_water_flowing"})
-			end
-			nodeupdate(wp)
+			if (node.name ~= "nuclear:radioactive_water_source" and
+			    node.name ~= "nuclear:radioactive_water_flowing") then
+				if (type == "source") then
+					minetest.add_node(wp, {name="nuclear:radioactive_water_source"})
+				elseif (type == "flowing") then
+					local level = minetest.get_node_level(wp)
+					minetest.add_node(wp, {name="nuclear:radioactive_water_flowing"})
+					minetest.set_node_level(wp, level)
+				end
+				nodeupdate(wp)
+			end]]--
+			local node = minetest.get_node(wp)
+			local wmeta = minetest.get_meta(wp)
+			wmeta:set_float("radioactivity", 1)
+			node.light = LIGHT_MAX
+			print("setting radioactivity to "..node.name)
 		end
 	end
 })
@@ -399,7 +411,7 @@ minetest.register_abm({
 		local diffT = meta.temperature - nuclear.air_temperature
 		meta.temperature = meta.temperature - diffT * nuclear.thermal_conductivity;
 		nuclear.set_meta(pos, meta)
-		print("Pos: ".."["..pos.x..","..pos.y..","..pos.z.."] T: "..meta.temperature.." Waste: "..meta.waste)
+		minetest.log("info", "Pos: ".."["..pos.x..","..pos.y..","..pos.z.."] T: "..meta.temperature.." Waste: "..meta.waste)
 		if (meta.waste >= 1) then
 			minetest.add_node(pos, {name="nuclear:uranium_waste"})
 		end
@@ -415,7 +427,7 @@ minetest.register_abm({
 		if (meta.temperature < nuclear.uranium_melting) then
 			minetest.add_node(pos, {name="nuclear:enriched_uranium_overheat"})
 			nuclear.set_meta(pos, meta)
-			minetest.log("action", "Melted uranium is freezed! T = "..meta.temperature)
+			minetest.log("info", "Melted uranium is freezed! T = "..meta.temperature)
 		end
 	end,
 })
@@ -430,11 +442,11 @@ minetest.register_abm({
 			minetest.add_node(pos, {name="nuclear:melted_uranium_source"})
 			nuclear.set_meta(pos, meta)
 			nodeupdate(pos)
-			minetest.log("action","Uranium melts! T = "..meta.temperature)
+			minetest.log("info","Uranium melts! T = "..meta.temperature)
 		elseif (meta.temperature < nuclear.uranium_hot) then
 			minetest.add_node(pos, {name="nuclear:enriched_uranium"})
 			nuclear.set_meta(pos, meta)
-			minetest.log("action","Uranium is cooled! T = "..meta.temperature)
+			minetest.log("info","Uranium is cooled! T = "..meta.temperature)
 		end
 	end,
 })
@@ -448,7 +460,7 @@ minetest.register_abm({
 		if (meta.temperature >= nuclear.uranium_hot) then
 			minetest.add_node(pos, {name="nuclear:enriched_uranium_overheat"})
 			nuclear.set_meta(pos, meta)
-			minetest.log("action","Uranium became hot! T = "..meta.temperature)
+			minetest.log("info","Uranium became hot! T = "..meta.temperature)
 		end
 	end,
 })
