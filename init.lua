@@ -17,7 +17,7 @@ minetest.register_node("nuclear:radioactive_water_source", {
 	drawtype = "liquid",
 	tiles = {
 		{
-			name = "default_water_source_animated.png",
+			name = "nuclear_radioactive_water_source_animated.png",
 			animation = {
 				type = "vertical_frames",
 				aspect_w = 16,
@@ -29,7 +29,7 @@ minetest.register_node("nuclear:radioactive_water_source", {
 	special_tiles = {
 		-- New-style water source material (mostly unused)
 		{
-			name = "default_water_source_animated.png",
+			name = "nuclear_radioactive_water_source_animated.png",
 			animation = {
 				type = "vertical_frames",
 				aspect_w = 16,
@@ -61,10 +61,10 @@ minetest.register_node("nuclear:radioactive_water_source", {
 minetest.register_node("nuclear:radioactive_water_flowing", {
 	description = "Flowing Radioactive Water",
 	drawtype = "flowingliquid",
-	tiles = {"default_water.png"},
+	tiles = {"nuclear_radioactive_water.png"},
 	special_tiles = {
 		{
-			name = "default_water_flowing_animated.png",
+			name = "nuclear_radioactive_water_flowing_animated.png",
 			backface_culling = false,
 			animation = {
 				type = "vertical_frames",
@@ -74,7 +74,7 @@ minetest.register_node("nuclear:radioactive_water_flowing", {
 			},
 		},
 		{
-			name = "default_water_flowing_animated.png",
+			name = "nuclear_radioactive_water_flowing_animated.png",
 			backface_culling = true,
 			animation = {
 				type = "vertical_frames",
@@ -144,7 +144,7 @@ minetest.register_node("nuclear:melted_uranium_source", {
 	liquidtype = "source",
 	liquid_alternative_flowing = "nuclear:melted_uranium_flowing",
 	liquid_alternative_source = "nuclear:melted_uranium_source",
-	liquid_viscosity = 14,
+	liquid_viscosity = 7,
 	liquid_renewable = false,
 	post_effect_color = {a = 103, r = 30, g = 60, b = 90},
 	groups = {fissionable = 1, liquid = 2, hot = 3, igniter = 1, falling_node = 1},
@@ -194,7 +194,7 @@ minetest.register_node("nuclear:melted_uranium_flowing", {
 	drop = "",
 	drowning = 1,
 	liquidtype = "flowing",
-	liquid_viscosity = 14,
+	liquid_viscosity = 7,
 	liquid_renewable = false,
 	liquid_alternative_flowing = "nuclear:melted_uranium_flowing",
 	liquid_alternative_source = "nuclear:melted_uranium_source",
@@ -346,6 +346,31 @@ minetest.register_abm({
 		nuclear.melt_node(posn, nuclear.sidemelt)
 
 		nodeupdate(posorig)
+	end
+})
+
+minetest.register_abm({
+	nodenames = {"nuclear:melted_uranium_flowing",
+	             "nuclear:melted_uranium_source",
+	             "nuclear:enriched_uranium_overheat",
+	             "nuclear:enriched_uranium",
+	             "nuclear:uranium_waste"},
+	interval = 10,
+	chance = 1,
+	action = function(pos)
+		local minp = vector.subtract(pos, nuclear.dist);
+		local maxp = vector.add(pos, nuclear.dist);
+		local water = minetest.find_nodes_in_area(minp, maxp, "group:water")
+		for i,wp in pairs(water) do
+			local node = minetest.get_node(wp)
+			local type = minetest.registered_nodes[node.name].liquidtype;
+			if (type == "source") then
+				minetest.add_node(wp, {name="nuclear:radioactive_water_source"})
+			elseif (type == "flowing") then
+				minetest.add_node(wp, {name="nuclear:radioactive_water_flowing"})
+			end
+			nodeupdate(wp)
+		end
 	end
 })
 
