@@ -1,12 +1,16 @@
 nuclear={}
 
 nuclear.uranium_melting = 1405.5
+nuclear.uranium_boiling = 4018
 nuclear.uranium_hot = 900
 nuclear.air_temperature = 300
 nuclear.decay_energy = 450
 nuclear.dist = {x = 5, y = 5, z = 5}
-nuclear.thermal_conductivity = 0.16
-nuclear.waste_k = 0.0001
+nuclear.thermal_conductivity = 0.15
+nuclear.waste_k = 0.00001
+nuclear.bottommelt = 0.4
+nuclear.sidemelt = 0.2
+nuclear.obsidian_mk = 10
 
 minetest.register_node("nuclear:radioactive_water_source", {
 	description = "Radioactive Water Source",
@@ -255,6 +259,22 @@ vector.scalar = function(vec1, vec2)
 	return vec1.x * vec2.x + vec1.y * vec2.y + vec1.z * vec2.z
 end
 
+nuclear.get_meta = function(pos)
+	
+	local meta = minetest.get_meta(pos)
+	local data = {
+		temperature = meta:get_float("temperature"),
+		waste       = meta:get_float("waste")
+	}
+	return data
+end
+
+nuclear.set_meta = function(pos, data)
+	local meta = minetest.get_meta(pos)
+	meta:set_float("temperature", data.temperature)
+	meta:set_float("waste", data.waste)
+end
+
 nuclear.has_intersection = function(center, position, blocks)
 	local diff = vector.subtract(position, center)
 	local dl = vector.length(diff)
@@ -273,6 +293,61 @@ nuclear.has_intersection = function(center, position, blocks)
 	return false
 end
 
+nuclear.melt_node = function(pos, k)
+	local prob = k
+	local node = minetest.get_node(pos)
+	if (node.name == "nuclear:melted_uranium_source" or
+	    node.name == "nuclear:melted_uranium_flowing") then
+		return 1
+	end
+
+	if (node.name == "default:obsidian" or
+	    node.name == "default:obsidianbrick") then
+		prob = k / nuclear.obsidian_mk
+	end
+
+	if (math.random() > prob) then
+		return 0
+	end
+	minetest.log("action", "melted uranium has melted "..node.name.." under it!")
+	minetest.remove_node(pos)
+	return 1
+end
+
+minetest.register_abm({
+	nodenames = {"nuclear:melted_uranium_source",
+	             "nuclear:melted_uranium_flowing"},
+	interval = 10,
+	chance = 1,
+	action = function(pos)
+		local posorig = pos
+
+		pos.y = pos.y - 1;
+		local bmelted = nuclear.melt_node(pos, nuclear.bottommelt)
+		if (bmelted == 0) then
+			return
+		end
+
+		local posn = pos;
+		posn.x = pos.x + 1;
+		nuclear.melt_node(posn, nuclear.sidemelt)
+
+		posn = pos;
+		posn.x = pos.x - 1;
+		nuclear.melt_node(posn, nuclear.sidemelt)
+
+		posn = pos;
+		posn.z = pos.z + 1;
+		nuclear.melt_node(posn, nuclear.sidemelt)
+
+		posn = pos;
+		posn.z = pos.z - 1;
+		nuclear.melt_node(posn, nuclear.sidemelt)
+
+		nodeupdate(posorig)
+	end
+})
+
 minetest.register_abm({
 	nodenames = {"nuclear:melted_uranium_source",
 	             "nuclear:enriched_uranium_overheat",
@@ -284,46 +359,37 @@ minetest.register_abm({
 		local maxp = vector.add(pos, nuclear.dist);
 		local neigbours = minetest.find_nodes_in_area(minp, maxp, "group:fissionable")
 		local graphite = minetest.find_nodes_in_area(minp, maxp, "nuclear:graphite")
-		local meta = minetest.get_meta(pos)
-		local temp = meta:get_float("temperature")
-		local waste = meta:get_float("waste")
+		local meta = nuclear.get_meta(pos)
+		--print("Before: T: "..meta.temperature.." Waste: "..meta.waste)
 		for i,npos in pairs(neigbours) do
 			if ((not vector.equals(pos, npos)) and nuclear.has_intersection(pos, npos, graphite)) then
 				local diff = vector.subtract(npos, pos)
 				local dist2 = vector.scalar(diff, diff)
 				local decayed = 1/dist2;
-				temp = temp + nuclear.decay_energy * decayed
-				waste = waste + nuclear.waste_k * decayed
+				meta.temperature  = meta.temperature + nuclear.decay_energy * decayed
+				meta.waste = meta.waste + nuclear.waste_k * decayed
 			end
 		end
-		local diffT = temp - nuclear.air_temperature
-		temp = temp - diffT * nuclear.thermal_conductivity;
-		meta:set_float("temperature", temp)
-		meta:set_float("waste", waste)
-		if (waste >= 1) then
+		local diffT = meta.temperature - nuclear.air_temperature
+		meta.temperature = meta.temperature - diffT * nuclear.thermal_conductivity;
+		nuclear.set_meta(pos, meta)
+		print("Pos: ".."["..pos.x..","..pos.y..","..pos.z.."] T: "..meta.temperature.." Waste: "..meta.waste)
+		if (meta.waste >= 1) then
 			minetest.add_node(pos, {name="nuclear:uranium_waste"})
 		end
-		print("T: "..meta:get_float("temperature").." Waste: "..waste)
-		
 	end,
 })
-
 
 minetest.register_abm({
 	nodenames = {"nuclear:melted_uranium_source"},
 	interval = 10,
 	chance = 1,
 	action = function(pos)
-		local meta = minetest.get_meta(pos)
-		local temperature = meta:get_float("temperature")
-		if (temperature < nuclear.uranium_melting) then
-			local waste = meta:get_float("waste")
+		local meta = nuclear.get_meta(pos)
+		if (meta.temperature < nuclear.uranium_melting) then
 			minetest.add_node(pos, {name="nuclear:enriched_uranium_overheat"})
-			local freezemeta = minetest.get_meta(pos)
-			freezemeta:set_float("temperature", temperature)
-			freezemeta:set_float("waste", waste)
-			print("Melted uranium is freezed! T = "..temperature)
-			nodeupdate(pos)
+			nuclear.set_meta(pos, meta)
+			minetest.log("action", "Melted uranium is freezed! T = "..meta.temperature)
 		end
 	end,
 })
@@ -333,24 +399,16 @@ minetest.register_abm({
 	interval = 10,
 	chance = 1,
 	action = function(pos)
-		local meta = minetest.get_meta(pos)
-		local temperature = meta:get_float("temperature")
-		if (temperature >= nuclear.uranium_melting) then
-			local waste = meta:get_float("waste")
+		local meta = nuclear.get_meta(pos)
+		if (meta.temperature >= nuclear.uranium_melting) then
 			minetest.add_node(pos, {name="nuclear:melted_uranium_source"})
-			local meltedmeta = minetest.get_meta(pos)
-			meltedmeta:set_float("temperature", temperature)
-			meltedmeta:set_float("waste", waste)
-			print("Uranium melts! T = "..temperature)
+			nuclear.set_meta(pos, meta)
 			nodeupdate(pos)
-		elseif (temperature < nuclear.uranium_hot) then
-			local waste = meta:get_float("waste")
+			minetest.log("action","Uranium melts! T = "..meta.temperature)
+		elseif (meta.temperature < nuclear.uranium_hot) then
 			minetest.add_node(pos, {name="nuclear:enriched_uranium"})
-			local coolmeta = minetest.get_meta(pos)
-			coolmeta:set_float("temperature", temperature)
-			coolmeta:set_float("waste", waste)
-			print("Uranium is cooled! T = "..temperature)
-			nodeupdate(pos)
+			nuclear.set_meta(pos, meta)
+			minetest.log("action","Uranium is cooled! T = "..meta.temperature)
 		end
 	end,
 })
@@ -360,16 +418,11 @@ minetest.register_abm({
 	interval = 10,
 	chance = 1,
 	action = function(pos)
-		local meta = minetest.get_meta(pos)
-		local temperature = meta:get_float("temperature")
-		if (temperature >= nuclear.uranium_hot) then
-			local waste = meta:get_float("waste")
+		local meta = nuclear.get_meta(pos)
+		if (meta.temperature >= nuclear.uranium_hot) then
 			minetest.add_node(pos, {name="nuclear:enriched_uranium_overheat"})
-			local hotmeta = minetest.get_meta(pos)
-			hotmeta:set_float("temperature", temperature)
-			hotmeta:set_float("waste", waste)
-			print("Uranium became hot! T = "..temperature)
-			nodeupdate(pos)
+			nuclear.set_meta(pos, meta)
+			minetest.log("action","Uranium became hot! T = "..meta.temperature)
 		end
 	end,
 })
