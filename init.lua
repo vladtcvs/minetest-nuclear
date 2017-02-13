@@ -16,10 +16,10 @@ nuclear.u235_decay_energy = 600
 nuclear.pu239_decay_energy = 900
 nuclear.u238_react_energy = 1
 
-nuclear.u235_natural_neutrons = 0.01
-nuclear.pu239_natural_neutrons = 0.02
-nuclear.u238_natural_neutrons = 0.001
-nuclear.waste_natural_neutrons = 0.2
+nuclear.u235_natural_neutrons = 0.001
+nuclear.pu239_natural_neutrons = 0.002
+nuclear.u238_natural_neutrons = 0.000001
+nuclear.waste_natural_neutrons = 0.02
 
 nuclear.u235_absorbtion = 1
 nuclear.u238_absorbtion = 0.2
