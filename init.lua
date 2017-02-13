@@ -4,7 +4,7 @@ nuclear.uranium_melting = 1405.5
 nuclear.uranium_boiling = 4018
 nuclear.uranium_hot = 900
 nuclear.air_temperature = 300
-nuclear.decay_energy = 450
+nuclear.decay_energy = 600
 nuclear.dist = {x = 5, y = 5, z = 5}
 nuclear.thermal_conductivity = 0.15
 nuclear.waste_k = 0.00001
@@ -12,7 +12,6 @@ nuclear.bottommelt = 0.4
 nuclear.sidemelt = 0.2
 nuclear.obsidian_mk = 10
 
---[[
 minetest.register_node("nuclear:radioactive_water_source", {
 	description = "Radioactive Water Source",
 	drawtype = "liquid",
@@ -105,7 +104,6 @@ minetest.register_node("nuclear:radioactive_water_flowing", {
 		not_in_creative_inventory = 1},
 	damage_per_second = 1,
 })
-]]--
 
 minetest.register_node("nuclear:melted_uranium_source", {
 	description = "Melted Uranium Source",
@@ -302,7 +300,7 @@ end
 minetest.register_abm({
 	nodenames = {"nuclear:melted_uranium_source",
 	             "nuclear:melted_uranium_flowing"},
-	interval = 10,
+	interval = 5,
 	chance = 1,
 	action = function(pos)
 		local posorig = pos
@@ -379,7 +377,7 @@ nuclear.has_intersection = function(center, position, blocks)
 			local h = vector.subtract(to_block, vector.multiply(to_source, s))
 			local hl = vector.length(h)
 			if hl < 0.5 then
-				print("center = ["..center.x..","..center.y..","..center.z.."] position = ["..position.x..","..position.y..","..position.z.."] block = ["..block.x..","..block.y..","..block.z.."]")
+			--	print("center = ["..center.x..","..center.y..","..center.z.."] position = ["..position.x..","..position.y..","..position.z.."] block = ["..block.x..","..block.y..","..block.z.."]")
 				return true
 			end
 		end
@@ -402,7 +400,7 @@ minetest.register_abm({
 		--print("Before: T: "..meta.temperature.." Waste: "..meta.waste)
 		for i,npos in pairs(neigbours) do
 			if ((not vector.equals(pos, npos)) and nuclear.has_intersection(pos, npos, graphite)) then
-				print("has intersection")
+			--	print("has intersection")
 				local diff = vector.subtract(npos, pos)
 				local dist2 = vector.scalar(diff, diff)
 				local decayed = 1/dist2;
