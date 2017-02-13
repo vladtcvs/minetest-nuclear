@@ -12,6 +12,31 @@ nuclear.bottommelt = 0.4
 nuclear.sidemelt = 0.2
 nuclear.obsidian_mk = 10
 
+nuclear.get_meta = function(pos)
+	local meta = minetest.get_meta(pos)
+	local data = {
+		temperature          = meta:get_float("temperature"),
+		waste                = meta:get_float("waste"),
+		u235                 = meta:get_float("u235"),
+		u238                 = meta:get_float("u238"),
+		pu239                = meta:get_float("pu239"),
+		u235_decay           = meta:get_float("u235_decay"),
+		pu239_decay          = meta:get_float("pu239_decay"),
+	}
+	return data
+end
+
+nuclear.set_meta = function(pos, data)
+	local meta = minetest.get_meta(pos)
+	meta:set_float("temperature", data.temperature)
+	meta:set_float("waste", data.waste)
+	meta:set_float("u235_decay", data.u235_decay)
+	meta:set_float("pu239_decay", data.pu239_decay)
+	meta:set_float("u235", data.u235)
+	meta:set_float("u238", data.u238)
+	meta:set_float("pu239", data.pu239)
+end
+
 minetest.register_node("nuclear:radioactive_water_source", {
 	description = "Radioactive Water Source",
 	drawtype = "liquid",
@@ -149,11 +174,6 @@ minetest.register_node("nuclear:melted_uranium_source", {
 	post_effect_color = {a = 103, r = 30, g = 60, b = 90},
 	groups = {fissionable = 1, liquid = 2, hot = 3, igniter = 1, falling_node = 1, radioactive = 1},
 	damage_per_second = 16*2,
-	on_construct = function(pos)
-		local meta = minetest.get_meta(pos)
-		meta:set_float("temperature", nuclear.uranium_melting + 1)
-		meta:set_float("waste", 0)
-	end,
 })
 
 minetest.register_node("nuclear:melted_uranium_flowing", {
@@ -206,15 +226,8 @@ minetest.register_node("nuclear:melted_uranium_flowing", {
 minetest.register_node("nuclear:graphite", {
 	description = "Graphite block",
 	tiles = {"nuclear_graphite.png"},
-	groups = {cracky = 3},
-	sounds = default.node_sound_stone_defaults(),
-})
-
-minetest.register_node("nuclear:uraniumblock", {
-	description = "Uranium block",
-	tiles = {"nuclear_uranium.png"},
-	groups = {cracky = 3},
-	is_ground_content = false,
+	neutron_moderate = 1,
+	groups = {cracky = 3, neutron_moderator = 1},
 	sounds = default.node_sound_stone_defaults(),
 })
 
@@ -225,56 +238,50 @@ minetest.register_node("nuclear:uranium_waste", {
 	is_ground_content = false,
 	sounds = default.node_sound_stone_defaults(),
 	on_construct = function(pos)
-		local meta = minetest.get_meta(pos)
-		meta:set_float("waste", 1)
+		local meta = {temperature = nuclear.air_temperature,
+		              waste = 1,
+		              u235 = 0,
+		              pu239 = 0,
+		              u238 = 0,
+		              u235_decay = 0,
+		              pu239_decay = 0,
+		}
+		nuclear.set_meta(pos, meta)
 	end,
 })
 
-minetest.register_node("nuclear:enriched_uranium", {
-	description = "Enriched uranium",
-	tiles = {"nuclear_enriched_uranium.png"},
+minetest.register_node("nuclear:uranium", {
+	description = "uranium",
+	tiles = {"nuclear_uranium.png"},
 	groups = {cracky = 3, fissionable = 1, radioactive = 1},
 	is_ground_content = false,
 	sounds = default.node_sound_stone_defaults(),
 	on_construct = function(pos)
-		local meta = minetest.get_meta(pos)
-		meta:set_float("temperature", nuclear.air_temperature)
-		meta:set_float("waste", 0)
+		local meta = {temperature = nuclear.air_temperature,
+		              waste = 0,
+		              u235 = 0.0325,
+		              pu239 = 0,
+		              u238 = 1 - 0.0325,
+		              u235_decay = 0,
+		              pu239_decay = 0,
+		}
+		nuclear.set_meta(pos, meta)
 	end,
 })
 
-minetest.register_node("nuclear:enriched_uranium_overheat", {
-	description = "Overheated enriched uranium",
-	tiles = {"nuclear_enriched_uranium_overheat.png"},
+minetest.register_node("nuclear:uranium_overheat", {
+	description = "Overheated uranium",
+	tiles = {"nuclear_uranium_overheat.png"},
 	groups = {cracky = 3, hot = 3, fissionable = 1, radioactive = 1},
 	light_source = default.LIGHT_MAX,
 	is_ground_content = false,
 	sounds = default.node_sound_stone_defaults(),
-	on_construct = function(pos)
-		local meta = minetest.get_meta(pos)
-		meta:set_float("temperature", nuclear.uranium_hot + 1)
-		meta:set_float("waste", 0)
-	end,
 })
 
 vector.scalar = function(vec1, vec2)
 	return vec1.x * vec2.x + vec1.y * vec2.y + vec1.z * vec2.z
 end
 
-nuclear.get_meta = function(pos)
-	local meta = minetest.get_meta(pos)
-	local data = {
-		temperature = meta:get_float("temperature"),
-		waste       = meta:get_float("waste")
-	}
-	return data
-end
-
-nuclear.set_meta = function(pos, data)
-	local meta = minetest.get_meta(pos)
-	meta:set_float("temperature", data.temperature)
-	meta:set_float("waste", data.waste)
-end
 
 nuclear.melt_node = function(pos, k)
 	local prob = k
@@ -377,7 +384,6 @@ nuclear.has_intersection = function(center, position, blocks)
 			local h = vector.subtract(to_block, vector.multiply(to_source, s))
 			local hl = vector.length(h)
 			if hl < 0.5 then
-			--	print("center = ["..center.x..","..center.y..","..center.z.."] position = ["..position.x..","..position.y..","..position.z.."] block = ["..block.x..","..block.y..","..block.z.."]")
 				return true
 			end
 		end
@@ -386,18 +392,15 @@ nuclear.has_intersection = function(center, position, blocks)
 end
 
 minetest.register_abm({
-	nodenames = {"nuclear:melted_uranium_source",
-	             "nuclear:enriched_uranium_overheat",
-	             "nuclear:enriched_uranium"},
+	nodenames = {"group:fissionable"},
 	interval = 10,
 	chance = 1,
 	action = function(pos)
 		local minp = vector.subtract(pos, nuclear.dist);
 		local maxp = vector.add(pos, nuclear.dist);
 		local neigbours = minetest.find_nodes_in_area(minp, maxp, "group:fissionable")
-		local graphite = minetest.find_nodes_in_area(minp, maxp, "nuclear:graphite")
+		local graphite = minetest.find_nodes_in_area(minp, maxp, "group:neutron_moderator")
 		local meta = nuclear.get_meta(pos)
-		--print("Before: T: "..meta.temperature.." Waste: "..meta.waste)
 		for i,npos in pairs(neigbours) do
 			if ((not vector.equals(pos, npos)) and nuclear.has_intersection(pos, npos, graphite)) then
 			--	print("has intersection")
@@ -425,7 +428,7 @@ minetest.register_abm({
 	action = function(pos)
 		local meta = nuclear.get_meta(pos)
 		if (meta.temperature < nuclear.uranium_melting) then
-			minetest.add_node(pos, {name="nuclear:enriched_uranium_overheat"})
+			minetest.add_node(pos, {name="nuclear:uranium_overheat"})
 			nuclear.set_meta(pos, meta)
 			minetest.log("info", "Melted uranium is freezed! T = "..meta.temperature)
 		end
@@ -433,7 +436,7 @@ minetest.register_abm({
 })
 
 minetest.register_abm({
-	nodenames = {"nuclear:enriched_uranium_overheat"},
+	nodenames = {"nuclear:uranium_overheat"},
 	interval = 10,
 	chance = 1,
 	action = function(pos)
@@ -444,7 +447,7 @@ minetest.register_abm({
 			nodeupdate(pos)
 			minetest.log("info","Uranium melts! T = "..meta.temperature)
 		elseif (meta.temperature < nuclear.uranium_hot) then
-			minetest.add_node(pos, {name="nuclear:enriched_uranium"})
+			minetest.add_node(pos, {name="nuclear:uranium"})
 			nuclear.set_meta(pos, meta)
 			minetest.log("info","Uranium is cooled! T = "..meta.temperature)
 		end
@@ -452,13 +455,13 @@ minetest.register_abm({
 })
 
 minetest.register_abm({
-	nodenames = {"nuclear:enriched_uranium"},
+	nodenames = {"nuclear:uranium"},
 	interval = 10,
 	chance = 1,
 	action = function(pos)
 		local meta = nuclear.get_meta(pos)
 		if (meta.temperature >= nuclear.uranium_hot) then
-			minetest.add_node(pos, {name="nuclear:enriched_uranium_overheat"})
+			minetest.add_node(pos, {name="nuclear:uranium_overheat"})
 			nuclear.set_meta(pos, meta)
 			minetest.log("info","Uranium became hot! T = "..meta.temperature)
 		end
@@ -484,13 +487,7 @@ minetest.register_craftitem("nuclear:uranium_ignot", {
 })
 
 minetest.register_craft({
-	output = "nuclear:enriched_uranium",
-	recipe = {{"nuclear:uraniumblock", "nuclear:uraniumblock"},
-		  {"nuclear:uraniumblock", "nuclear:uraniumblock"}}
-})
-
-minetest.register_craft({
-	output = "nuclear:uraniumblock",
+	output = "nuclear:uranium",
 	recipe = {{"nuclear:uranium_ignot", "nuclear:uranium_ignot", "nuclear:uranium_ignot"},
 		  {"nuclear:uranium_ignot", "nuclear:uranium_ignot", "nuclear:uranium_ignot"},
 		  {"nuclear:uranium_ignot", "nuclear:uranium_ignot", "nuclear:uranium_ignot"}}
