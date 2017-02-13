@@ -4,13 +4,30 @@ nuclear.uranium_melting = 1405.5
 nuclear.uranium_boiling = 4018
 nuclear.uranium_hot = 900
 nuclear.air_temperature = 300
-nuclear.decay_energy = 600
+
 nuclear.dist = {x = 5, y = 5, z = 5}
 nuclear.thermal_conductivity = 0.15
 nuclear.waste_k = 0.00001
 nuclear.bottommelt = 0.4
 nuclear.sidemelt = 0.2
 nuclear.obsidian_mk = 10
+
+nuclear.u235_decay_energy = 600
+nuclear.pu239_decay_energy = 900
+nuclear.u238_react_energy = 1
+
+nuclear.u235_natural_neutrons = 0.01
+nuclear.pu239_natural_neutrons = 0.02
+nuclear.u238_natural_neutrons = 0.001
+nuclear.waste_natural_neutrons = 0.2
+
+nuclear.u235_absorbtion = 1
+nuclear.u238_absorbtion = 0.2
+nuclear.pu239_absorbtion = 1
+
+nuclear.u235_react_k = 0.1
+nuclear.u238_react_k = 0.1
+nuclear.pu239_react_k = 0.1
 
 nuclear.get_meta = function(pos)
 	local meta = minetest.get_meta(pos)
@@ -373,10 +390,11 @@ minetest.register_abm({
 	end
 })
 
-nuclear.has_intersection = function(center, position, blocks)
+nuclear.blocks_intersection = function(center, position, blocks)
 	local diff = vector.subtract(position, center)
 	local dl = vector.length(diff)
 	local to_source = vector.multiply(diff, 1/dl)
+	local crossed = 0
 	for i,block in pairs(blocks) do
 		local to_block = vector.subtract(block, center)
 		local s = vector.scalar(to_source, to_block)
@@ -384,11 +402,42 @@ nuclear.has_intersection = function(center, position, blocks)
 			local h = vector.subtract(to_block, vector.multiply(to_source, s))
 			local hl = vector.length(h)
 			if hl < 0.5 then
-				return true
+				crossed = crossed + 1
 			end
 		end
 	end
-	return false
+	return crossed
+end
+
+nuclear.neutron_source = function(node_info)
+	return node_info.u235  * (node_info.u235_decay + nuclear.u235_natural_neutrons) +
+	       node_info.pu239 * (node_info.pu239_decay + nuclear.pu239_natural_neutrons) +
+	       node_info.u238 * nuclear.u238_natural_neutrons +
+	       node_info.waste * nuclear.waste_natural_neutrons
+end
+
+nuclear.calculate_neutrons = function(source, receiver, source_amount)
+	local receiver_amount = {slow = 0, fast = source_amount}
+	local distance = vector.distance(source, receiver)
+	receiver_amount.fast = receiver_amount.fast / (distance * distance + 1)
+	receiver_amount.slow = receiver_amount.slow / (distance * distance + 1)
+	return receiver_amount
+end
+
+nuclear.calculate_received_neutrons = function(receiver)
+	local minp = vector.subtract(receiver, nuclear.dist);
+	local maxp = vector.add(receiver, nuclear.dist);
+	local neigbours = minetest.find_nodes_in_area(minp, maxp, "group:fissionable")
+	local total = {slow = 0, fast = 0}
+	for i,npos in pairs(neigbours) do
+		local diff = vector.subtract(npos, receiver)
+		local dist2 = vector.scalar(diff, diff)
+		local neutron_stream = nuclear.neutron_source(nuclear.get_meta(npos))
+		local received = nuclear.calculate_neutrons(npos, receiver, neutron_stream)
+		total.slow = total.slow + received.slow
+		total.fast = total.fast + received.fast
+	end
+	return total
 end
 
 minetest.register_abm({
@@ -396,25 +445,35 @@ minetest.register_abm({
 	interval = 10,
 	chance = 1,
 	action = function(pos)
-		local minp = vector.subtract(pos, nuclear.dist);
-		local maxp = vector.add(pos, nuclear.dist);
-		local neigbours = minetest.find_nodes_in_area(minp, maxp, "group:fissionable")
-		local graphite = minetest.find_nodes_in_area(minp, maxp, "group:neutron_moderator")
 		local meta = nuclear.get_meta(pos)
-		for i,npos in pairs(neigbours) do
-			if ((not vector.equals(pos, npos)) and nuclear.has_intersection(pos, npos, graphite)) then
-			--	print("has intersection")
-				local diff = vector.subtract(npos, pos)
-				local dist2 = vector.scalar(diff, diff)
-				local decayed = 1/dist2;
-				meta.temperature  = meta.temperature + nuclear.decay_energy * decayed
-				meta.waste = meta.waste + nuclear.waste_k * decayed
-			end
-		end
-		local diffT = meta.temperature - nuclear.air_temperature
-		meta.temperature = meta.temperature - diffT * nuclear.thermal_conductivity;
+		print("Before T: "..meta.temperature.." Waste: "..meta.waste.." U235: "..meta.u235.." U238: "..meta.u238.." Pu239: "..meta.pu239)
+		local received_neutrons = nuclear.calculate_received_neutrons(pos)
+
+		print("Slow: "..received_neutrons.slow.." Fast: "..received_neutrons.fast)
+		local u235_reacting  = received_neutrons.slow * nuclear.u235_absorbtion
+		local pu239_reacting = received_neutrons.slow * nuclear.pu239_absorbtion
+		local u238_reacting  = received_neutrons.fast * nuclear.u238_absorbtion
+
+		meta.u235_decay = u235_reacting
+		meta.pu239_decay = pu239_reacting
+
+		local reacted_u235  = u235_reacting * nuclear.u235_react_k
+		local reacted_pu239 = pu239_reacting * nuclear.pu239_react_k
+		local reacted_u238  = u238_reacting * nuclear.u238_react_k
+
+		meta.u235  = meta.u235 - reacted_u235
+		meta.u238  = meta.u238 - reacted_u238
+		meta.pu239 = meta.pu239 - reacted_pu239 + reacted_u238
+		meta.waste = meta.waste + reacted_u235 + reacted_pu239
+
+		local energy = nuclear.u235_decay_energy * reacted_u235 +
+		               nuclear.pu239_decay_energy * reacted_pu239 +
+		               nuclear.u238_react_energy * reacted_u238
+
+		meta.temperature = meta.temperature + energy - (meta.temperature + energy/2 - nuclear.air_temperature) * nuclear.thermal_conductivity;
+
 		nuclear.set_meta(pos, meta)
-		minetest.log("info", "Pos: ".."["..pos.x..","..pos.y..","..pos.z.."] T: "..meta.temperature.." Waste: "..meta.waste)
+		print("After T: "..meta.temperature.." Waste: "..meta.waste.." U235: "..meta.u235.." U238: "..meta.u238.." Pu239: "..meta.pu239)
 		if (meta.waste >= 1) then
 			minetest.add_node(pos, {name="nuclear:uranium_waste"})
 		end
