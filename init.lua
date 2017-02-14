@@ -12,24 +12,23 @@ nuclear.bottommelt = 0.4
 nuclear.sidemelt = 0.2
 nuclear.obsidian_mk = 10
 
-nuclear.u235_decay_energy = 600
+nuclear.u235_react_energy = 600
 nuclear.u235_natural_neutrons = 1e-7
 nuclear.u235_absorbtion = 1
-nuclear.u235_reproduce_k = 1.1
-nuclear.u235_neutron_density = 1
+nuclear.u235_reproduce_k = 5
 
-nuclear.pu239_decay_energy = 900
+nuclear.pu239_react_energy = 900
 nuclear.pu239_natural_neutrons = 2e-6
 nuclear.pu239_absorbtion = 1
-nuclear.pu239_reproduce_k = 1.1
-nuclear.pu239_neutron_density = 1
+nuclear.pu239_reproduce_k = 5
 
 nuclear.u238_react_energy = 1
 nuclear.u238_natural_neutrons = 1e-12
-nuclear.u238_absorbtion = 0.2
-nuclear.u238_neutron_density = 1
+nuclear.u238_absorbtion = 1e-2
 
-nuclear.waste_natural_neutrons = 1e-5
+nuclear.waste_natural_neutrons = 1e-3
+
+nuclear.neutron_moderation = 2
 
 nuclear.get_meta = function(pos)
 	local meta = minetest.get_meta(pos)
@@ -416,16 +415,22 @@ nuclear.blocks_intersection = function(center, position, blocks)
 end
 
 nuclear.neutron_source = function(node_info)
-	return node_info.u235  * node_info.u235_radiation +
-	       node_info.pu239 * node_info.pu239_radiation +
-	       node_info.u238  * node_info.u238_radiation +
+	return node_info.u235_radiation +
+	       node_info.pu239_radiation +
+	       node_info.u238_radiation +
 	       node_info.waste * nuclear.waste_natural_neutrons
 end
 
 nuclear.calculate_neutrons = function(source, receiver, source_amount)
 	local receiver_amount = {slow = 0, fast = source_amount}
 	local distance = vector.distance(source, receiver)
+	local minp = vector.subtract(receiver, nuclear.dist);
+	local maxp = vector.add(receiver, nuclear.dist);
+	local blocks = minetest.find_nodes_in_area(minp, maxp, "group:neutron_moderator")
+	local intersection = nuclear.blocks_intersection(source, receiver, blocks)
 
+	receiver_amount.fast = source_amount / math.pow(nuclear.neutron_moderation, intersection)
+	receiver_amount.slow = source_amount - receiver_amount.fast
 
 	receiver_amount.fast = receiver_amount.fast / (distance * distance + 1)
 	receiver_amount.slow = receiver_amount.slow / (distance * distance + 1)
@@ -435,7 +440,7 @@ end
 nuclear.calculate_received_neutrons = function(receiver)
 	local minp = vector.subtract(receiver, nuclear.dist);
 	local maxp = vector.add(receiver, nuclear.dist);
-	local neigbours = minetest.find_nodes_in_area(minp, maxp, "group:fissionable")
+	local neigbours = minetest.find_nodes_in_area(minp, maxp, "group:radioactive")
 	local total = {slow = 0, fast = 0}
 	for i,npos in pairs(neigbours) do
 		local diff = vector.subtract(npos, receiver)
@@ -458,30 +463,32 @@ minetest.register_abm({
 		local received_neutrons = nuclear.calculate_received_neutrons(pos)
 
 		print("Slow: "..received_neutrons.slow.." Fast: "..received_neutrons.fast)
-		local u235_neutrons_absorbed  = received_neutrons.slow * nuclear.u235_absorbtion
-		local pu239_neutrons_absorbed = received_neutrons.slow * nuclear.pu239_absorbtion
-		local u238_neutrons_absorbed  = received_neutrons.fast * nuclear.u238_absorbtion
 
-		meta.u235_radiation  = nuclear.u235_natural_neutrons  + u235_neutrons_absorbed * nuclear.u235_reproduce_k
-		meta.u238_radiation  = nuclear.u238_natural_neutrons
-		meta.pu239_radiation = nuclear.pu239_natural_neutrons + pu239_neutrons_absorbed * nuclear.pu239_reproduce_k
+		local u235_neutrons_absorbed  = received_neutrons.slow * nuclear.u235_absorbtion * meta.u235
+		local pu239_neutrons_absorbed = received_neutrons.slow * nuclear.pu239_absorbtion * meta.pu239
+		local u238_neutrons_absorbed  = received_neutrons.fast * nuclear.u238_absorbtion * meta.u238
 
-		local reacted_u235  = u235_neutrons_absorbed * meta.u235 / nuclear.u235_neutron_density
-		local reacted_pu239 = pu239_neutrons_absorbed * meta.pu239 / nuclear.pu239_neutron_density
-		local reacted_u238  = u238_neutrons_absorbed * meta.u238 / nuclear.u238_neutron_density
+		meta.u235_radiation  = nuclear.u235_natural_neutrons * meta.u235  + u235_neutrons_absorbed * nuclear.u235_reproduce_k
+		meta.u238_radiation  = nuclear.u238_natural_neutrons * meta.u238
+		meta.pu239_radiation = nuclear.pu239_natural_neutrons * meta.pu239 + pu239_neutrons_absorbed * nuclear.pu239_reproduce_k
 
-		local decayed_u235 = nuclear.u235_natural_neutrons * meta.u235 / nuclear.u235_neutron_density
-		local decayed_pu239 = nuclear.pu239_natural_neutrons * meta.pu239 / nuclear.pu239_neutron_density
-		local decayed_u238 = nuclear.u238_natural_neutrons * meta.u238 / nuclear.u238_neutron_density
+		local reacted_u235  = u235_neutrons_absorbed
+		local reacted_pu239 = pu239_neutrons_absorbed
+		local reacted_u238  = u238_neutrons_absorbed
+
+		print("reacted u235: "..reacted_u235.." pu239: "..reacted_pu239.." u238: "..reacted_u238)
+		local decayed_u235 = nuclear.u235_natural_neutrons * meta.u235
+		local decayed_pu239 = nuclear.pu239_natural_neutrons * meta.pu239
+		local decayed_u238 = nuclear.u238_natural_neutrons * meta.u238
 
 		meta.u235  = meta.u235 - reacted_u235 - decayed_u235
 		meta.u238  = meta.u238 - reacted_u238 - decayed_u238
 		meta.pu239 = meta.pu239 - reacted_pu239 + reacted_u238 - decayed_pu239
 		meta.waste = meta.waste + reacted_u235 + reacted_pu239 + decayed_u235 + decayed_pu239 + decayed_u238
 
-		local energy = nuclear.u235_decay_energy * reacted_u235 +
-		               nuclear.pu239_decay_energy * reacted_pu239 +
-		               nuclear.u238_react_energy * reacted_u238
+		local energy = nuclear.u235_react_energy  * (reacted_u235 + decayed_u235) +
+		               nuclear.pu239_react_energy * (reacted_pu239 + decayed_pu239) +
+		               nuclear.u238_react_energy  * decayed_u238
 
 		meta.temperature = meta.temperature + energy - (meta.temperature + energy/2 - nuclear.air_temperature) * nuclear.thermal_conductivity;
 
