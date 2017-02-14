@@ -15,12 +15,12 @@ nuclear.obsidian_mk = 10
 nuclear.u235_react_energy = 6e6
 nuclear.u235_natural_neutrons = 1e-7
 nuclear.u235_absorbtion = 1
-nuclear.u235_reproduce_k = 5
+nuclear.u235_reproduce_k = 15
 
 nuclear.pu239_react_energy = 9e6
 nuclear.pu239_natural_neutrons = 2e-6
 nuclear.pu239_absorbtion = 1
-nuclear.pu239_reproduce_k = 5
+nuclear.pu239_reproduce_k = 15
 
 nuclear.u238_react_energy = 1e4
 nuclear.u238_natural_neutrons = 1e-12
@@ -239,7 +239,7 @@ minetest.register_node("nuclear:melted_uranium_flowing", {
 	liquid_alternative_flowing = "nuclear:melted_uranium_flowing",
 	liquid_alternative_source = "nuclear:melted_uranium_source",
 	post_effect_color = {a = 103, r = 30, g = 60, b = 90},
-	groups = {fissionable = 1, liquid = 2, hot = 3, igniter = 1, not_in_creative_inventory = 1, radioactive = 1},
+	groups = {liquid = 2, hot = 3, igniter = 1, not_in_creative_inventory = 1},
 	damage_per_second = 16*2,
 })
 
@@ -508,7 +508,9 @@ minetest.register_abm({
 		meta.temperature = meta.temperature + energy - (meta.temperature + energy/2 - nuclear.air_temperature) * nuclear.thermal_conductivity;
 
 		nuclear.set_meta(pos, meta)
-		print("After T: "..meta.temperature.." Waste: "..meta.waste.." U235: "..meta.u235.." U238: "..meta.u238.." Pu239: "..meta.pu239)
+		print("After T: "..meta.temperature.." Waste: "..meta.waste..
+		      " U235: "..meta.u235_radiation/meta.u235..
+		      " Pu239: "..meta.pu239_radiation/meta.pu239)
 		if (meta.waste >= 1) then
 			minetest.add_node(pos, {name="nuclear:uranium_waste"})
 		end
