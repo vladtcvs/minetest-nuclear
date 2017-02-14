@@ -508,7 +508,7 @@ minetest.register_abm({
 		meta.temperature = meta.temperature + energy - (meta.temperature + energy/2 - nuclear.air_temperature) * nuclear.thermal_conductivity;
 
 		nuclear.set_meta(pos, meta)
-		print("After T: "..meta.temperature.." Waste: "..meta.waste..
+		print("["..minetest.get_node(pos).name.."] T: "..meta.temperature.." Waste: "..meta.waste..
 		      " U235: "..meta.u235_radiation/meta.u235..
 		      " Pu239: "..meta.pu239_radiation/meta.pu239)
 		if (meta.waste >= 1) then
