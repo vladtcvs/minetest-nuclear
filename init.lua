@@ -348,17 +348,22 @@ minetest.register_abm({
 
 		local posn = pos;
 		posn.x = pos.x + 1;
+		posn.y = pos.y;
+		posn.z = pos.z
 		nuclear.melt_node(posn, nuclear.sidemelt)
 
-		posn = pos;
 		posn.x = pos.x - 1;
+		posn.y = pos.y;
+		posn.z = pos.z
 		nuclear.melt_node(posn, nuclear.sidemelt)
 
-		posn = pos;
+		posn.x = pos.x;
+		posn.y = pos.y;
 		posn.z = pos.z + 1;
 		nuclear.melt_node(posn, nuclear.sidemelt)
 
-		posn = pos;
+		posn.x = pos.x;
+		posn.y = pos.y;
 		posn.z = pos.z - 1;
 		nuclear.melt_node(posn, nuclear.sidemelt)
 
@@ -508,9 +513,9 @@ minetest.register_abm({
 		meta.temperature = meta.temperature + energy - (meta.temperature + energy/2 - nuclear.air_temperature) * nuclear.thermal_conductivity;
 
 		nuclear.set_meta(pos, meta)
-		print("["..minetest.get_node(pos).name.."] T: "..meta.temperature.." Waste: "..meta.waste..
-		      " U235: "..meta.u235_radiation/meta.u235..
-		      " Pu239: "..meta.pu239_radiation/meta.pu239)
+		print("["..minetest.get_node(pos).name.."] T: "..meta.temperature.." Waste: "..meta.waste)
+		      --" U235: "..meta.u235_radiation/meta.u235..
+		      --" Pu239: "..meta.pu239_radiation/meta.pu239)
 		if (meta.waste >= 1) then
 			minetest.add_node(pos, {name="nuclear:uranium_waste"})
 		end
