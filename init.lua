@@ -192,7 +192,7 @@ minetest.register_node("nuclear:melted_uranium_source", {
 	liquid_viscosity = 7,
 	liquid_renewable = false,
 	post_effect_color = {a = 103, r = 30, g = 60, b = 90},
-	groups = {fissionable = 1, liquid = 2, hot = 3, igniter = 1, falling_node = 1, radioactive = 1},
+	groups = {fissionable = 1, liquid = 2, hot = 3, igniter = 1, radioactive = 1},
 	damage_per_second = 16*2,
 })
 
