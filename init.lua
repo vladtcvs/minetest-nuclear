@@ -12,23 +12,23 @@ nuclear.bottommelt = 0.4
 nuclear.sidemelt = 0.2
 nuclear.obsidian_mk = 10
 
-nuclear.u235_react_energy = 600
+nuclear.u235_react_energy = 6e6
 nuclear.u235_natural_neutrons = 1e-7
 nuclear.u235_absorbtion = 1
 nuclear.u235_reproduce_k = 5
 
-nuclear.pu239_react_energy = 900
+nuclear.pu239_react_energy = 9e6
 nuclear.pu239_natural_neutrons = 2e-6
 nuclear.pu239_absorbtion = 1
 nuclear.pu239_reproduce_k = 5
 
-nuclear.u238_react_energy = 1
+nuclear.u238_react_energy = 1e4
 nuclear.u238_natural_neutrons = 1e-12
 nuclear.u238_absorbtion = 1e-2
 
 nuclear.waste_natural_neutrons = 1e-3
 
-nuclear.neutron_moderation = 2
+nuclear.neutron_moderation = 3
 
 nuclear.get_meta = function(pos)
 	local meta = minetest.get_meta(pos)
@@ -243,6 +243,12 @@ minetest.register_node("nuclear:melted_uranium_flowing", {
 	damage_per_second = 16*2,
 })
 
+minetest.register_node("nuclear:neutron_detector", {
+	description = "Neutron detector",
+	tiles = {"nuclear_neutron_detector.png"},
+	groups = {cracky = 3},
+})
+
 minetest.register_node("nuclear:graphite", {
 	description = "Graphite block",
 	tiles = {"nuclear_graphite.png"},
@@ -454,6 +460,17 @@ nuclear.calculate_received_neutrons = function(receiver)
 end
 
 minetest.register_abm({
+	nodenames = {"nuclear:neutron_detector"},
+	interval = 10,
+	chance = 1,
+	action = function(pos)
+		local meta = nuclear.get_meta(pos)
+		local received_neutrons = nuclear.calculate_received_neutrons(pos)
+		print("Slow: "..received_neutrons.slow.." Fast: "..received_neutrons.fast)
+	end
+})
+
+minetest.register_abm({
 	nodenames = {"group:fissionable"},
 	interval = 10,
 	chance = 1,
@@ -461,8 +478,6 @@ minetest.register_abm({
 		local meta = nuclear.get_meta(pos)
 		--print("Before T: "..meta.temperature.." Waste: "..meta.waste.." U235: "..meta.u235.." U238: "..meta.u238.." Pu239: "..meta.pu239)
 		local received_neutrons = nuclear.calculate_received_neutrons(pos)
-
-		print("Slow: "..received_neutrons.slow.." Fast: "..received_neutrons.fast)
 
 		local u235_neutrons_absorbed  = received_neutrons.slow * nuclear.u235_absorbtion * meta.u235
 		local pu239_neutrons_absorbed = received_neutrons.slow * nuclear.pu239_absorbtion * meta.pu239
@@ -476,7 +491,7 @@ minetest.register_abm({
 		local reacted_pu239 = pu239_neutrons_absorbed
 		local reacted_u238  = u238_neutrons_absorbed
 
-		print("reacted u235: "..reacted_u235.." pu239: "..reacted_pu239.." u238: "..reacted_u238)
+		--print("reacted u235: "..reacted_u235.." pu239: "..reacted_pu239.." u238: "..reacted_u238)
 		local decayed_u235 = nuclear.u235_natural_neutrons * meta.u235
 		local decayed_pu239 = nuclear.pu239_natural_neutrons * meta.pu239
 		local decayed_u238 = nuclear.u238_natural_neutrons * meta.u238
