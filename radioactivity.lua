@@ -14,22 +14,8 @@ nuclear.calculate_moderate_coeffs = function(k_f, k_s, m)
 	return coeffs
 end
 
-nuclear.blocks_intersection = function(center, position, blocks)
-	local diff = vector.subtract(position, center)
-	local dl = vector.length(diff)
-	local to_source = vector.multiply(diff, 1/dl)
+nuclear.blocks_intersection = function(from, to, group)
 	local crossed = {}
-	for i,block in pairs(blocks) do
-		local to_block = vector.subtract(block, center)
-		local s = vector.scalar(to_source, to_block)
-		if (s < dl and s > 0) then
-			local h = vector.subtract(to_block, vector.multiply(to_source, s))
-			local hl = vector.length(h)
-			if hl < 0.5 then
-				table.insert(crossed, minetest.get_node(block))
-			end
-		end
-	end
 	return crossed
 end
 
@@ -47,8 +33,7 @@ end
 nuclear.calculate_neutrons = function(source, receiver, source_amount)
 	local receiver_amount = {slow = 0, fast = source_amount}
 	local distance = vector.distance(source, receiver)
-	local group = "group:neutron_moderator"
-	local blocks = {}
+	local blocks = nuclear.blocks_intersection(source, receiver, "group:neutron_moderator")
 
 	for i,block in pairs(blocks) do
 		local coeffs         = nuclear.moderating(block)
