@@ -1,7 +1,8 @@
 nuclear.melt_node = function(pos, k)
 	local prob = k
 	local node = minetest.get_node(pos)
-	if (node.name == "nuclear:melted_uranium_source" or
+	if (node.name == "air" or
+	    node.name == "nuclear:melted_uranium_source" or
 	    node.name == "nuclear:melted_uranium_flowing") then
 		return 1
 	end
