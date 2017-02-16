@@ -369,11 +369,125 @@ minetest.register_abm({
 	end
 })
 
+nuclear.measurer_huds = {}
+
+nuclear.show_measurer_hud = function(user, meta)
+	local player_name = user:get_player_name()
+	local format = function(num)
+		return string.format("%.2e", num)
+	end
+	local t_str = string.format("%4.2f", meta.temperature)
+	local u235_str = format(meta.u235)..":"..format(meta.u235_radiation/meta.u235)
+	local u238_str = format(meta.u238)..":"..format(meta.u238_radiation/meta.u238)
+	local pu239_str = format(meta.pu239)..":"..format(meta.pu239_radiation/meta.pu239)
+	local waste_str = format(meta.waste)
+
+	local huds = nuclear.measurer_huds[player_name]
+
+	if huds ~= nil and huds.present then
+		user:hud_change(huds.t, "text", t_str)
+		user:hud_change(huds.u235, "text", u235_str)
+		user:hud_change(huds.u238, "text", u238_str)
+		user:hud_change(huds.pu239, "text", pu239_str)
+		user:hud_change(huds.waste, "text", waste_str)
+	else
+		local background_hud_id = user:hud_add({
+			hud_elem_type = "image",
+			position = {x=0.01,y=0.1},
+			scale = {x = -20, y = -20},
+			text =  "nuclear_detector_hud.png",
+			alignment = {x=1,y=1},
+			offset = {x=0, y=0},
+		})
+		local T_label = user:hud_add({
+			hud_elem_type = "text",
+			position = {x=0.01,y=0.1},
+			text =  "Temperature",
+			alignment = {x=1,y=0},
+			offset = {x=20, y=30},
+		})
+		local T_hud_id = user:hud_add({
+			hud_elem_type = "text",
+			position = {x=0.01,y=0.1},
+			text =  t_str,
+			alignment = {x=1,y=0},
+			offset = {x=120, y=30},
+		})
+		local u235_label = user:hud_add({
+			hud_elem_type = "text",
+			position = {x=0.01,y=0.1},
+			text =  "U235",
+			alignment = {x=1,y=0},
+			offset = {x=20, y=45},
+		})
+		local u235_hud_id = user:hud_add({
+			hud_elem_type = "text",
+			position = {x=0.01,y=0.1},
+			text = u235_str,
+			alignment = {x=1,y=0},
+			offset = {x=120, y=45},
+		})
+		local u238_label = user:hud_add({
+			hud_elem_type = "text",
+			position = {x=0.01,y=0.1},
+			text =  "U238",
+			alignment = {x=1,y=0},
+			offset = {x=20, y=60},
+		})
+		local u238_hud_id = user:hud_add({
+			hud_elem_type = "text",
+			position = {x=0.01,y=0.1},
+			text = u238_str,
+			alignment = {x=1,y=0},
+			offset = {x=120, y=60},
+		})
+		local pu239_label = user:hud_add({
+			hud_elem_type = "text",
+			position = {x=0.01,y=0.1},
+			text =  "Pu239",
+			alignment = {x=1,y=0},
+			offset = {x=20, y=75},
+		})
+		local pu239_hud_id = user:hud_add({
+			hud_elem_type = "text",
+			position = {x=0.01,y=0.1},
+			text = pu239_str,
+			alignment = {x=1,y=0},
+			offset = {x=120, y=75},
+		})
+		local waste_label = user:hud_add({
+			hud_elem_type = "text",
+			position = {x=0.01,y=0.1},
+			text =  "Waste",
+			alignment = {x=1,y=0},
+			offset = {x=20, y=90},
+		})
+		local waste_hud_id = user:hud_add({
+			hud_elem_type = "text",
+			position = {x=0.01,y=0.1},
+			text = waste_str,
+			alignment = {x=1,y=0},
+			offset = {x=120, y=90},
+		})
+
+		local huds = {
+			present = true,
+			bg = background_hud_id,
+			t = T_hud_id,
+			u235 = u235_hud_id,
+			u238 = u238_hud_id,
+			pu239 = pu239_hud_id,
+			waste = waste_hud_id
+		}
+		nuclear.measurer_huds[player_name] = huds
+	end
+	
+end
+
 minetest.register_tool("nuclear:measurer", {
 	description = "Nuclear substancies composition measurement tool",
 	inventory_image = "nuclear_detector.png",
 	on_use = function(itemstack, user, pointed_thing)
-		local player_name = user:get_player_name()
 		local pt = pointed_thing
 
 		if (pt.type == "node") then
@@ -381,6 +495,7 @@ minetest.register_tool("nuclear:measurer", {
 			local pos  = pt.under
 			if minetest.get_item_group(node.name, "radioactive") > 0 then
 				local meta = nuclear.get_meta(pos)
+				nuclear.show_measurer_hud(user, meta)
 				print("Radioactive: T:"..meta.temperature..
 				      " U235: "..meta.u235..":"..meta.u235_radiation/meta.u235..
 				      " U238: "..meta.u238..":"..meta.u238_radiation/meta.u238..
