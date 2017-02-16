@@ -1,21 +1,48 @@
 nuclear.calculate_moderate_coeffs = function(k_f, k_s, m)
-	local cf = math.exp(-(k_f + m))
-	local ds = 0
-	local df = 0
+	local fast_to_fast = math.exp(-(k_f + m))
+	local fast_to_slow = 0
+	local slow_to_slow = math.exp(-k_s)
 	local d = k_s - k_f - m
 	if (d ~= 0) then
-		ds = math.exp(-k_s)
-		df = m/d * (math.exp(-(k_f + m)) - math.exp(-k_s))
+		fast_to_slow = m/d * (math.exp(-(k_f + m)) - math.exp(-k_s))
 	else
-		ds = math.exp(-k_s)
-		df = m * math.exp(-k_s)
+		fast_to_slow = m * math.exp(-k_s)
 	end
-	local coeffs = {c_f = cf, d_s = ds, d_f = df}
+	local coeffs = {f_f = fast_to_fast, f_s = fast_to_slow, s_s = slow_to_slow}
 	return coeffs
 end
 
-nuclear.blocks_intersection = function(from, to, group)
+nuclear.blocks_intersection = function(from, to)
+	-- centers of cubes
 	local crossed = {}
+	if (from == to) then
+		return crossed
+	end
+	local start = {x = from.x + 0.5, y = from.y + 0.5, z = from.z + 0.5}
+	local finish = {x = to.x + 0.5, y = to.y + 0.5, z = to.z + 0.5}
+	local dist = vector.distance(from, to)
+	local dir = vector.direction(start, finish)
+	local dirlen = vector.length(dir)
+	dir = vector.multiply(dir, 1 / dirlen)
+	local dl = 0.2
+	local curlen = 0
+	local pos = start
+	local prev_c = nil
+	while curlen < dist do
+		pos.x = pos.x + dir.x * dl
+		pos.y = pos.y + dir.y * dl
+		pos.z = pos.z + dir.z * dl
+		local cell = {x = math.floor(pos.x),
+		              y = math.floor(pos.y),
+		              z = math.floor(pos.z)}
+		if (prev_c == nil or (not vector.equals(cell, prev_c))) then
+			local node = minetest.get_node(cell)
+			table.insert(crossed, node)
+			prev_c = cell
+		end
+		curlen = curlen + dl
+	end
+
 	return crossed
 end
 
@@ -33,14 +60,16 @@ end
 nuclear.calculate_neutrons = function(source, receiver, source_amount)
 	local receiver_amount = {slow = 0, fast = source_amount}
 	local distance = vector.distance(source, receiver)
-	local blocks = nuclear.blocks_intersection(source, receiver, "group:neutron_moderator")
+	local blocks = nuclear.blocks_intersection(source, receiver)
 
 	for i,block in pairs(blocks) do
 		local coeffs         = nuclear.moderating(block)
-		local fast = receiver_amount.fast * coeffs.c_f
-		local slow = receiver_amount.slow * coeffs.d_s + receiver_amount.fast * coeffs.d_f
-		receiver.amount_fast = fast
-		receiver.amount_slow = slow
+		if coeffs ~= nil then
+			local fast = receiver_amount.fast * coeffs.f_f
+			local slow = receiver_amount.slow * coeffs.s_s + receiver_amount.fast * coeffs.f_s
+			receiver_amount.fast = fast
+			receiver_amount.slow = slow
+		end
 	end
 
 	receiver_amount.fast = receiver_amount.fast / (distance * distance + 1)
@@ -102,7 +131,7 @@ minetest.register_abm({
 		meta.temperature = meta.temperature + energy - (meta.temperature + energy/2 - nuclear.air_temperature) * nuclear.thermal_conductivity;
 
 		nuclear.set_meta(pos, meta)
-		print("["..minetest.get_node(pos).name.."] T: "..meta.temperature.." Waste: "..meta.waste)
+		--print("["..minetest.get_node(pos).name.."] T: "..meta.temperature.." Waste: "..meta.waste)
 		      --" U235: "..meta.u235_radiation/meta.u235..
 		      --" Pu239: "..meta.pu239_radiation/meta.pu239)
 		if (meta.waste >= 1) then

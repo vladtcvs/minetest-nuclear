@@ -363,7 +363,37 @@ minetest.register_abm({
 	action = function(pos)
 		local meta = nuclear.get_meta(pos)
 		local received_neutrons = nuclear.calculate_received_neutrons(pos)
-		print("Slow: "..received_neutrons.slow.." Fast: "..received_neutrons.fast)
+		local meta = minetest.get_meta(pos)
+		meta:set_float("fast", received_neutrons.fast)
+		meta:set_float("slow", received_neutrons.slow)
+	end
+})
+
+minetest.register_tool("nuclear:measurer", {
+	description = "Nuclear substancies composition measurement tool",
+	inventory_image = "nuclear_detector.png",
+	on_use = function(itemstack, user, pointed_thing)
+		local player_name = user:get_player_name()
+		local pt = pointed_thing
+
+		if (pt.type == "node") then
+			local node = minetest.get_node(pt.under)
+			local pos  = pt.under
+			if minetest.get_item_group(node.name, "radioactive") > 0 then
+				local meta = nuclear.get_meta(pos)
+				print("Radioactive: T:"..meta.temperature..
+				      " U235: "..meta.u235..":"..meta.u235_radiation/meta.u235..
+				      " U238: "..meta.u238..":"..meta.u238_radiation/meta.u238..
+				      " Pu239: "..meta.pu239..":"..meta.pu239_radiation/meta.pu239..
+				      " Waste: "..meta.waste)
+			elseif minetest.get_item_group(node.name, "neutron_moderator") > 0 then
+				print("Moderator")
+			elseif node.name == "nuclear:neutron_detector" then
+				local meta = minetest.get_meta(pos)
+				print("Neutron detector: slow = "..meta:get_float("slow").." fast = "..meta:get_float("fast"))
+			end
+		end
+		return itemstack
 	end
 })
 
