@@ -59,6 +59,9 @@ nuclear.calculate_neutrons = function(source, receiver, source_amount)
 			local slow = receiver_amount.slow * coeffs.s_s + receiver_amount.fast * coeffs.f_s
 			receiver_amount.fast = fast
 			receiver_amount.slow = slow
+			if receiver_amount.fast == 0 and receiver_amount.slow == 0 then
+				break
+			end
 		end
 	end
 

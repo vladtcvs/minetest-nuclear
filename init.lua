@@ -28,8 +28,10 @@ nuclear.u238_absorbtion = 1e-2
 
 nuclear.waste_natural_neutrons = 1e-3
 
-nuclear.get_meta = function(pos)
-	local meta = minetest.get_meta(pos)
+nuclear.parse_meta = function(meta)
+	if meta == nil then
+		return nil
+	end
 	local data = {
 		temperature          = meta:get_float("temperature"),
 		waste                = meta:get_float("waste"),
@@ -41,6 +43,22 @@ nuclear.get_meta = function(pos)
 		u238_radiation       = meta:get_float("u238_radiation"),
 	}
 	return data
+end
+
+nuclear.get_meta = function(pos)
+	local meta = minetest.get_meta(pos)
+	return nuclear.parse_meta(meta)
+end
+
+nuclear.has_meta = function(pos)
+	local meta = minetest.get_meta(pos)
+	if meta == nil then
+		return false
+	end
+	if meta:get_float("temperature") == 0 then
+		return false
+	end
+	return true
 end
 
 nuclear.set_meta = function(pos, data)

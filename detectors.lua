@@ -237,6 +237,6 @@ minetest.register_tool("nuclear:measurer", {
 			end
 		end
 		return itemstack
-	end
+	end,
 })
 
