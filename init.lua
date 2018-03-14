@@ -59,6 +59,11 @@ vector.scalar = function(vec1, vec2)
 	return vec1.x * vec2.x + vec1.y * vec2.y + vec1.z * vec2.z
 end
 
-dofile(minetest.get_modpath("nuclear").."/radioactivity.lua")
-dofile(minetest.get_modpath("nuclear").."/nodes.lua")
-dofile(minetest.get_modpath("nuclear").."/actions.lua")
+local modpath = minetest.get_modpath("nuclear")
+
+dofile(modpath.."/radioactivity.lua")
+dofile(modpath.."/nodes.lua")
+dofile(modpath.."/actions.lua")
+dofile(modpath.."/ores.lua")
+dofile(modpath.."/craft.lua")
+dofile(modpath.."/detectors.lua")
