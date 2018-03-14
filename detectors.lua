@@ -51,7 +51,6 @@ nuclear.measurer.show_info = function(user)
 	end
 
 	if data.huds.radioactive == nil or data.huds.radioactive.present == false then
-		print("creating")
 		local T_label = user:hud_add({
 			hud_elem_type = "text",
 			position = {x=0.01,y=0.1},
@@ -193,6 +192,29 @@ nuclear.measurer.update_neutron_detector_info = function(user, meta)
 	--nuclear.measurer.show_info(user)
 end
 
+nuclear.measurer.hide_info = function(user)
+	local player_name = user:get_player_name()
+	local data = nuclear.measurer.datas[player_name]
+	if data == nil then
+		return
+	end
+
+	user:hud_remove(data.huds.bg.bg_hud)
+	user:hud_remove(data.huds.radioactive.t)
+	user:hud_remove(data.huds.radioactive.u235)
+	user:hud_remove(data.huds.radioactive.u238)
+	user:hud_remove(data.huds.radioactive.pu239)
+	user:hud_remove(data.huds.radioactive.waste)
+
+	user:hud_remove(data.huds.radioactive.t_l)
+	user:hud_remove(data.huds.radioactive.u235_l)
+	user:hud_remove(data.huds.radioactive.u238_l)
+	user:hud_remove(data.huds.radioactive.pu239_l)
+	user:hud_remove(data.huds.radioactive.waste_l)
+
+	nuclear.measurer.datas[player_name] = nil
+end
+
 minetest.register_tool("nuclear:measurer", {
 	description = "nuclear substancies composition measurement tool",
 	inventory_image = "nuclear_detector.png",
@@ -206,10 +228,12 @@ minetest.register_tool("nuclear:measurer", {
 				local meta = nuclear.get_meta(pos)
 				nuclear.measurer.update_radiation_info(user, meta)
 			elseif minetest.get_item_group(node.name, "neutron_moderator") > 0 then
-				print("moderator")
+				nuclear.measurer.hide_info(user)
 			elseif node.name == "nuclear:neutron_detector" then
 				local meta = minetest.get_meta(pos)
 				nuclear.measurer.update_neutron_detector_info(user, meta)
+			else
+				nuclear.measurer.hide_info(user)
 			end
 		end
 		return itemstack

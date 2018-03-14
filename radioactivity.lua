@@ -124,7 +124,7 @@ minetest.register_abm({
 		--print("["..minetest.get_node(pos).name.."] T: "..meta.temperature.." Waste: "..meta.waste)
 		      --" U235: "..meta.u235_radiation/meta.u235..
 		      --" Pu239: "..meta.pu239_radiation/meta.pu239)
-		if (meta.waste >= 1) then
+		if (meta.waste >= 0.99) then
 			minetest.add_node(pos, {name="nuclear:uranium_waste"})
 		end
 	end,

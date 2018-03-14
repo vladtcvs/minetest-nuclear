@@ -115,6 +115,7 @@ minetest.register_node("nuclear:uranium", {
 
 minetest.register_node("nuclear:uranium_overheat", {
 	description = "Overheated uranium",
+	drop = "nuclear:uranium",
 	tiles = {"nuclear_uranium_overheat.png"},
 	groups = {cracky = 3, hot = 3, fissionable = 1, radioactive = 1, not_in_creative_inventory = 1},
 	light_source = default.LIGHT_MAX,
