@@ -55,7 +55,7 @@ minetest.register_abm({
 		posn.z = pos.z - 1;
 		nuclear.melt_node(posn, nuclear.sidemelt)
 
-		nodeupdate(posorig)
+		minetest.check_for_falling(posorig)
 	end
 })
 

@@ -141,14 +141,12 @@ nuclear.measurer.show_info = function(user)
 			waste_l = waste_label,
 		}
 	else
-		print("changing")
 		user:hud_change(data.huds.radioactive.t,     "text", data.radiation.temperature)
 		user:hud_change(data.huds.radioactive.u235,  "text", data.radiation.u235_state)
 		user:hud_change(data.huds.radioactive.u238,  "text", data.radiation.u238_state)
 		user:hud_change(data.huds.radioactive.pu239, "text", data.radiation.pu239_state)
 		user:hud_change(data.huds.radioactive.waste, "text", data.radiation.waste_state)
 	end
-	print(data.data.temperature.." "..data.data.u235_state.." "..data.data.u238_state)
 end
 
 
@@ -158,10 +156,10 @@ nuclear.measurer.update_radiation_info = function(user, meta)
 		return string.format("%.2e", num)
 	end
 	local t_str = string.format("%4.2f", meta.temperature)
-	local u235_str = format(meta.u235)..":"..format(meta.u235_radiation/meta.u235)
-	local u238_str = format(meta.u238)..":"..format(meta.u238_radiation/meta.u238)
-	local pu239_str = format(meta.pu239)..":"..format(meta.pu239_radiation/meta.pu239)
-	local waste_str = format(meta.waste)
+	local u235_str = format(meta.u235*100).."% :"..format(meta.u235_radiation/meta.u235)
+	local u238_str = format(meta.u238*100).."% :"..format(meta.u238_radiation/meta.u238)
+	local pu239_str = format(meta.pu239*100).."% :"..format(meta.pu239_radiation/meta.pu239)
+	local waste_str = format(meta.waste*100).."%"
 
 	local new_data = {
 		temperature = t_str,

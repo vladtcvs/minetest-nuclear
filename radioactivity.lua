@@ -1,15 +1,5 @@
-nuclear.calculate_moderate_coeffs = function(k_f, k_s, m)
-	local fast_to_fast = math.exp(-(k_f + m))
-	local fast_to_slow = 0
-	local slow_to_slow = math.exp(-k_s)
-	local d = k_s - k_f - m
-	if (d ~= 0) then
-		fast_to_slow = m/d * (math.exp(-(k_f + m)) - math.exp(-k_s))
-	else
-		fast_to_slow = m * math.exp(-k_s)
-	end
-	local coeffs = {f_f = fast_to_fast, f_s = fast_to_slow, s_s = slow_to_slow}
-	return coeffs
+nuclear.calculate_moderate_coeffs = function(k_s, k_f, m)
+	return {f_f = (1 - k_f)*(1 - m), s_s = (1 - k_s), f_s = (1 - k_f)*m}
 end
 
 nuclear.blocks_intersection = function(from, to)

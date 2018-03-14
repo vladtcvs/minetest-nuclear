@@ -5,3 +5,9 @@ minetest.register_craft({
 		  {"nuclear:uranium_ignot", "nuclear:uranium_ignot", "nuclear:uranium_ignot"}}
 })
 
+minetest.register_craft({
+	type = "cooking",
+	output = 'nuclear:graphite',
+	recipe = 'default:coalblock',
+})
+

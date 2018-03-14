@@ -41,7 +41,7 @@ minetest.register_node("nuclear:melted_uranium_source", {
 	liquid_viscosity = 7,
 	liquid_renewable = false,
 	post_effect_color = {a = 103, r = 30, g = 60, b = 90},
-	groups = {fissionable = 1, liquid = 2, hot = 3, igniter = 1, radioactive = 1},
+	groups = {fissionable = 1, liquid = 2, hot = 3, igniter = 1, radioactive = 1, falling_node = 1, not_in_creative_inventory = 1},
 	damage_per_second = 16*2,
 })
 
@@ -116,7 +116,7 @@ minetest.register_node("nuclear:uranium", {
 minetest.register_node("nuclear:uranium_overheat", {
 	description = "Overheated uranium",
 	tiles = {"nuclear_uranium_overheat.png"},
-	groups = {cracky = 3, hot = 3, fissionable = 1, radioactive = 1},
+	groups = {cracky = 3, hot = 3, fissionable = 1, radioactive = 1, not_in_creative_inventory = 1},
 	light_source = default.LIGHT_MAX,
 	is_ground_content = false,
 	sounds = default.node_sound_stone_defaults(),
@@ -167,7 +167,7 @@ minetest.register_abm({
 		if (meta.temperature >= nuclear.uranium_melting) then
 			minetest.add_node(pos, {name="nuclear:melted_uranium_source"})
 			nuclear.set_meta(pos, meta)
-			nodeupdate(pos)
+			minetest.check_for_falling(pos)	
 			minetest.log("info","Uranium melts! T = "..meta.temperature)
 		elseif (meta.temperature < nuclear.uranium_hot) then
 			minetest.add_node(pos, {name="nuclear:uranium"})
@@ -198,13 +198,16 @@ minetest.register_abm({
 minetest.register_node("nuclear:graphite", {
 	description = "Graphite block",
 	tiles = {"nuclear_graphite.png"},
-	coeffs = nuclear.calculate_moderate_coeffs(0, 0, 1.098), -- moderation = 3
+	coeffs = nuclear.calculate_moderate_coeffs(0, 0, 0.2),
 	groups = {cracky = 3, neutron_moderator = 1},
 	sounds = default.node_sound_stone_defaults(),
 })
 
-minetest.register_craft({
-	type = "cooking",
-	output = 'nuclear:graphite',
-	recipe = 'default:coalblock',
+minetest.register_node("nuclear:cadmium", {
+	description = "Cadmium block",
+	tiles = {"nuclear_cadmium.png"},
+	coeffs = nuclear.calculate_moderate_coeffs(1, 1, 0),
+	groups = {cracky = 3, neutron_moderator = 1},
+	sounds = default.node_sound_stone_defaults(),
 })
+
