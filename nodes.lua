@@ -181,10 +181,6 @@ minetest.register_node("nuclear:uranium_waste", {
 	is_ground_content = false,
 	sounds = default.node_sound_stone_defaults(),
 	on_construct = function(pos)
-		local oldmeta = nuclear.get_meta(pos)
-		if oldmeta ~= nil then
-			return
-		end
 		local meta = {temperature = nuclear.air_temperature,
 		              waste = 1,
 		              u235 = 0,
