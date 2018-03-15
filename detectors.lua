@@ -15,6 +15,7 @@ minetest.register_abm({
 		local meta = minetest.get_meta(pos)
 		meta:set_float("fast", received_neutrons.fast)
 		meta:set_float("slow", received_neutrons.slow)
+		nuclear.set_meta(pos, meta)
 	end
 })
 
