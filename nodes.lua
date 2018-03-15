@@ -119,6 +119,7 @@ nuclear.dig_uranium = function(pos, node, user)
 		cur_stack:add_item({name = drop, count = 1, wear = 0, metadata = meta_ser})	
 		inventory:set_stack("main", cur_index, cur_stack)
 	else
+		local has_space = false
 		local ns = inventory:get_size("main")
 		-- search first empty
 		for i=1,ns,1 do
@@ -126,8 +127,14 @@ nuclear.dig_uranium = function(pos, node, user)
 			if cur_stack:is_empty() then
 				cur_stack:add_item({name = drop, count = 1, wear = 0, metadata = meta_ser})
 				inventory:set_stack("main", i, cur_stack)
+				has_space = true
 				break
 			end
+		end
+		if has_space == false then
+			-- didn't fit into the inventory
+			local stack = ItemStack({name = drop, count = 1, wear = 0, metadata = meta_ser})
+			minetest.item_drop(stack, user, pos)
 		end
 	end
 	minetest.remove_node(pos)	
