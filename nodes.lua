@@ -107,37 +107,11 @@ nuclear.drop_uranium = function(itemstack, user, pos)
 	return minetest.item_drop(itemstack, user, pos)
 end
 
-nuclear.dig_uranium = function(pos, node, user)
-	local meta = nuclear.get_meta(pos)
-	local meta_ser = minetest.serialize(meta)
-	local drop = minetest.registered_nodes[node.name].drop
-
-	local inventory = user:get_inventory()
-	local cur_index = user:get_wield_index()
-	local cur_stack = inventory:get_stack("main", cur_index)
-	if cur_stack:is_empty() then
-		cur_stack:add_item({name = drop, count = 1, wear = 0, metadata = meta_ser})	
-		inventory:set_stack("main", cur_index, cur_stack)
-	else
-		local has_space = false
-		local ns = inventory:get_size("main")
-		-- search first empty
-		for i=1,ns,1 do
-			cur_stack = inventory:get_stack("main", i)
-			if cur_stack:is_empty() then
-				cur_stack:add_item({name = drop, count = 1, wear = 0, metadata = meta_ser})
-				inventory:set_stack("main", i, cur_stack)
-				has_space = true
-				break
-			end
-		end
-		if has_space == false then
-			-- didn't fit into the inventory
-			local stack = ItemStack({name = drop, count = 1, wear = 0, metadata = meta_ser})
-			minetest.item_drop(stack, user, pos)
-		end
+nuclear.preserve_metadata = function(pos, oldnode, oldmeta, drops)
+	local meta_ser = minetest.serialize(oldmeta)
+	for k, drop in pairs(drops) do
+		drops[k] = ItemStack({name = "nuclear:uranium", count = 1, wear = 0, metadata = meta_ser})
 	end
-	minetest.remove_node(pos)	
 end
 
 nuclear.creation_meta = nil
@@ -159,7 +133,7 @@ minetest.register_node("nuclear:uranium", {
 		end
 	end,
 	on_drop = nuclear.drop_uranium,
-	on_dig = nuclear.dig_uranium,
+	preserve_metadata = nuclear.preserve_metadata,
 	on_place = function(itemstack, placer, pointed_thing)
 		local meta_ref = itemstack:get_metadata()
 		local meta = minetest.deserialize(meta_ref)
@@ -178,7 +152,7 @@ minetest.register_node("nuclear:uranium_overheat", {
 	is_ground_content = false,
 	sounds = default.node_sound_stone_defaults(),
 	on_drop = nuclear.drop_uranium,
-	on_dig = nuclear.dig_uranium,
+	preserve_metadata = nuclear.preserve_metadata,
 })
 
 minetest.register_node("nuclear:uranium_waste", {
