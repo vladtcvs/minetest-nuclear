@@ -116,6 +116,15 @@ end
 
 nuclear.creation_meta = nil
 
+nuclear.uranium_on_blast = function(pos)
+	local meta = nuclear.get_meta(pos)
+	local meta_ser = minetest.serialize(meta)
+	drops = {}
+	drops[1] = ItemStack({name = "nuclear:uranium", count = 1, wear = 0, metadata = meta_ser})
+	minetest.remove_node(pos)
+	return drops
+end
+
 minetest.register_node("nuclear:uranium", {
 	description = "uranium",
 	tiles = {"nuclear_uranium.png"},
@@ -132,6 +141,7 @@ minetest.register_node("nuclear:uranium", {
 			nuclear.creation_meta = nil
 		end
 	end,
+	on_blast = nuclear.uranium_on_blast,
 	on_drop = nuclear.drop_uranium,
 	preserve_metadata = nuclear.preserve_metadata,
 	on_place = function(itemstack, placer, pointed_thing)
@@ -152,6 +162,7 @@ minetest.register_node("nuclear:uranium_overheat", {
 	is_ground_content = false,
 	sounds = default.node_sound_stone_defaults(),
 	on_drop = nuclear.drop_uranium,
+	on_blast = nuclear.uranium_on_blast,
 	preserve_metadata = nuclear.preserve_metadata,
 })
 
