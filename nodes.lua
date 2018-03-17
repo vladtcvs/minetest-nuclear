@@ -195,8 +195,7 @@ minetest.register_abm({
 	action = function(pos)
 		local meta = nuclear.get_meta(pos)
 		if (meta.temperature < nuclear.uranium_melting) then
-			minetest.add_node(pos, {name="nuclear:uranium_overheat"})
-			nuclear.set_meta(pos, meta)
+			minetest.swap_node(pos, {name="nuclear:uranium_overheat"})
 			minetest.log("info", "Melted uranium is freezed! T = "..meta.temperature)
 		end
 	end,
@@ -209,13 +208,11 @@ minetest.register_abm({
 	action = function(pos)
 		local meta = nuclear.get_meta(pos)
 		if (meta.temperature >= nuclear.uranium_melting) then
-			minetest.add_node(pos, {name="nuclear:melted_uranium_source"})
-			nuclear.set_meta(pos, meta)
+			minetest.swap_node(pos, {name="nuclear:melted_uranium_source"})
 			minetest.check_for_falling(pos)	
 			minetest.log("info","Uranium melts! T = "..meta.temperature)
 		elseif (meta.temperature < nuclear.uranium_hot) then
-			minetest.add_node(pos, {name="nuclear:uranium"})
-			nuclear.set_meta(pos, meta)
+			minetest.swap_node(pos, {name="nuclear:uranium"})
 			minetest.log("info","Uranium is cooled! T = "..meta.temperature)
 		end
 	end,
@@ -228,8 +225,7 @@ minetest.register_abm({
 	action = function(pos)
 		local meta = nuclear.get_meta(pos)
 		if (meta.temperature >= nuclear.uranium_hot) then
-			minetest.add_node(pos, {name="nuclear:uranium_overheat"})
-			nuclear.set_meta(pos, meta)
+			minetest.swap_node(pos, {name="nuclear:uranium_overheat"})
 			minetest.log("info","Uranium became hot! T = "..meta.temperature)
 		end
 	end,

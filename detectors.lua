@@ -10,12 +10,11 @@ minetest.register_abm({
 	interval = 10,
 	chance = 1,
 	action = function(pos)
-		local meta = nuclear.get_meta(pos)
+		local meta = minetest.get_meta(pos)
 		local received_neutrons = nuclear.calculate_received_neutrons(pos)
 		local meta = minetest.get_meta(pos)
 		meta:set_float("fast", received_neutrons.fast)
 		meta:set_float("slow", received_neutrons.slow)
-		nuclear.set_meta(pos, meta)
 	end
 })
 
@@ -196,7 +195,7 @@ end
 nuclear.measurer.hide_info = function(user)
 	local player_name = user:get_player_name()
 	local data = nuclear.measurer.datas[player_name]
-	if data == nil then
+	if data == nil or data.huds == nil then
 		return
 	end
 
