@@ -1,21 +1,43 @@
 --------------- DETECTORS -------------
+
+local on_digiline_receive = function (pos, _, channel, msg)
+        local setchan = minetest.get_meta(pos):get_string("channel")
+        if channel == setchan and msg == "FAST" then
+		local rcv = nuclear.calculate_received_neutrons(pos)
+                digilines.receptor_send(pos, digilines.rules.default, channel, string.format("%.2e", rcv.fast))
+        end
+        if channel == setchan and msg == "SLOW" then
+		local rcv = nuclear.calculate_received_neutrons(pos)
+                digilines.receptor_send(pos, digilines.rules.default, channel, string.format("%.2e", rcv.slow))
+        end
+end
+
+
 minetest.register_node("nuclear:neutron_detector", {
 	description = "Neutron detector",
 	tiles = {"nuclear_neutron_detector.png"},
 	groups = {cracky = 3},
-})
-
-minetest.register_abm({
-	nodenames = {"nuclear:neutron_detector"},
-	interval = 10,
-	chance = 1,
-	action = function(pos)
-		local meta = minetest.get_meta(pos)
-		local received_neutrons = nuclear.calculate_received_neutrons(pos)
-		local meta = minetest.get_meta(pos)
-		meta:set_float("fast", received_neutrons.fast)
-		meta:set_float("slow", received_neutrons.slow)
-	end
+	digiline =
+        {
+                receptor = {},
+                effector = {
+                        action = on_digiline_receive
+                },
+        },
+	on_construct = function(pos)
+                local meta = minetest.get_meta(pos)
+                meta:set_string("formspec", "field[channel;Channel;${channel}]")
+        end,
+	on_receive_fields = function(pos, _, fields, sender)
+                local name = sender:get_player_name()
+                if minetest.is_protected(pos, name) and not minetest.check_player_privs(name, {protection_bypass=true}) then
+                        minetest.record_protection_violation(pos, name)
+                        return
+                end
+                if (fields.channel) then
+                        minetest.get_meta(pos):set_string("channel", fields.channel)
+                end
+        end,
 })
 
 nuclear.measurer = {
