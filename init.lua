@@ -6,7 +6,13 @@ nuclear.uranium_hot = 900
 nuclear.air_temperature = 300
 
 nuclear.dist = {x = 5, y = 5, z = 5}
-nuclear.thermal_conductivity = 0.15
+
+
+nuclear.thermal_conductivity_default = 0.15
+nuclear.thermal_conductivity_water = 3
+nuclear.thermal_conductivity_uranium = 1.5
+
+
 nuclear.waste_k = 0.00001
 nuclear.bottommelt = 0.4
 nuclear.sidemelt = 0.2

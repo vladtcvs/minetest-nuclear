@@ -86,6 +86,32 @@ nuclear.calculate_received_neutrons = function(receiver)
 	return total
 end
 
+nuclear.calculate_temperature = function(pos, temperature, energy)
+	local num_nb = 8 + 9 + 9
+
+	local cooling = 0
+	for x = pos.x - 1, pos.x + 1 do
+		for y = pos.y - 1, pos.y + 1 do
+			for z = pos.z - 1, pos.z + 1 do
+				local meta = nuclear.get_meta({x=x, y=y, z=z})
+				local T = meta.temperature
+				if T == 0 then
+					T = nuclear.air_temperature
+				end
+				local dT = temperature - T
+				local k = nuclear.thermal_conductivity_default
+
+				local node = minetest.get_node(pos)
+				if node.name == "default:water_source" then
+					k = nuclear.thermal_conductivity_water
+				end
+				cooling = cooling + dT * k
+			end
+		end
+	end
+	return temperature + energy - cooling/num_nb
+end
+
 minetest.register_abm({
 	nodenames = {"group:fissionable"},
 	interval = 10,
@@ -121,12 +147,9 @@ minetest.register_abm({
 		               nuclear.pu239_react_energy * (reacted_pu239 + decayed_pu239) +
 		               nuclear.u238_react_energy  * decayed_u238
 
-		meta.temperature = meta.temperature + energy - (meta.temperature + energy/2 - nuclear.air_temperature) * nuclear.thermal_conductivity;
+		meta.temperature = nuclear.calculate_temperature(pos, meta.temperature, energy)
 
 		nuclear.set_meta(pos, meta)
-		--print("["..minetest.get_node(pos).name.."] T: "..meta.temperature.." Waste: "..meta.waste)
-		      --" U235: "..meta.u235_radiation/meta.u235..
-		      --" Pu239: "..meta.pu239_radiation/meta.pu239)
 		if (meta.waste >= 0.99) then
 			minetest.add_node(pos, {name="nuclear:uranium_waste"})
 		end

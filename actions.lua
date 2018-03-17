@@ -88,8 +88,8 @@ minetest.register_abm({
 			local node = minetest.get_node(wp)
 			local wmeta = minetest.get_meta(wp)
 			wmeta:set_float("radioactivity", 1)
-			node.light = LIGHT_MAX
-			print("setting radioactivity to "..node.name)
+			--node.light = LIGHT_MAX
+			--print("setting radioactivity to "..node.name)
 		end
 	end
 })
