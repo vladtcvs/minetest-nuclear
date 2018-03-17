@@ -86,10 +86,17 @@ nuclear.calculate_received_neutrons = function(receiver)
 	return total
 end
 
-nuclear.calculate_temperature = function(pos, temperature, energy)
+local k_default = math.exp(-nuclear.thermal_conductivity_default)
+local k_water = math.exp(-nuclear.thermal_conductivity_water)
+
+nuclear.calculate_cooling = function(pos, temperature)
 	local num_nb = 8 + 9 + 9
 
 	local cooling = 0
+	local k = 1
+	local sT = 0
+	local s = 0
+	
 	for x = pos.x - 1, pos.x + 1 do
 		for y = pos.y - 1, pos.y + 1 do
 			for z = pos.z - 1, pos.z + 1 do
@@ -98,18 +105,24 @@ nuclear.calculate_temperature = function(pos, temperature, energy)
 				if T == 0 then
 					T = nuclear.air_temperature
 				end
-				local dT = temperature - T
-				local k = nuclear.thermal_conductivity_default
 
 				local node = minetest.get_node(pos)
+				local ki = 1
+				local a = 0
 				if node.name == "default:water_source" then
-					k = nuclear.thermal_conductivity_water
+					ki = k_water
+					a = nuclear.thermal_conductivity_water
+				else
+					ki = k_default
+					a = nuclear.thermal_conductivity_default
 				end
-				cooling = cooling + dT * k
+				k = k * ki
+				sT = sT + a * T
+				s = s + a
 			end
 		end
 	end
-	return temperature + energy - cooling/num_nb
+	return (temperature - sT/s) * k + sT/s
 end
 
 minetest.register_abm({
@@ -147,7 +160,7 @@ minetest.register_abm({
 		               nuclear.pu239_react_energy * (reacted_pu239 + decayed_pu239) +
 		               nuclear.u238_react_energy  * decayed_u238
 
-		meta.temperature = nuclear.calculate_temperature(pos, meta.temperature, energy)
+		meta.temperature = nuclear.calculate_cooling(pos, meta.temperature + energy)
 
 		nuclear.set_meta(pos, meta)
 		if (meta.waste >= 0.99) then
